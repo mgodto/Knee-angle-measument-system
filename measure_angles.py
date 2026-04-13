@@ -159,7 +159,32 @@ def detect_blue_points(point_image: np.ndarray) -> list[dict]:
     return merge_close_points(components)
 
 
-def map_points_to_raw(points: list[dict], raw_shape: tuple[int, int], point_shape: tuple[int, int]) -> list[dict]:
+def estimate_point_to_raw_transform(raw_image: np.ndarray, point_image: np.ndarray) -> np.ndarray:
+    raw_gray = cv2.cvtColor(raw_image, cv2.COLOR_BGR2GRAY)
+    point_gray = cv2.cvtColor(point_image, cv2.COLOR_BGR2GRAY)
+    raw_h, raw_w = raw_gray.shape
+    point_resized = cv2.resize(point_gray, (raw_w, raw_h), interpolation=cv2.INTER_AREA)
+
+    raw_blur = cv2.GaussianBlur(raw_gray, (0, 0), 2.0)
+    point_blur = cv2.GaussianBlur(point_resized, (0, 0), 2.0)
+    template = raw_blur.astype(np.float32) / 255.0
+    moving = point_blur.astype(np.float32) / 255.0
+
+    warp = np.eye(2, 3, dtype=np.float32)
+    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 100, 1e-5)
+    try:
+        _, warp = cv2.findTransformECC(template, moving, warp, cv2.MOTION_AFFINE, criteria)
+    except cv2.error:
+        return np.eye(2, 3, dtype=np.float32)
+    return warp
+
+
+def map_points_to_raw(
+    points: list[dict],
+    raw_shape: tuple[int, int],
+    point_shape: tuple[int, int],
+    point_to_raw_warp: np.ndarray | None = None,
+) -> list[dict]:
     raw_h, raw_w = raw_shape
     point_h, point_w = point_shape
     sx = raw_w / point_w
@@ -167,11 +192,20 @@ def map_points_to_raw(points: list[dict], raw_shape: tuple[int, int], point_shap
 
     mapped = []
     for point in points:
+        scaled_x = point["x"] * sx
+        scaled_y = point["y"] * sy
+        if point_to_raw_warp is not None:
+            raw_x = point_to_raw_warp[0, 0] * scaled_x + point_to_raw_warp[0, 1] * scaled_y + point_to_raw_warp[0, 2]
+            raw_y = point_to_raw_warp[1, 0] * scaled_x + point_to_raw_warp[1, 1] * scaled_y + point_to_raw_warp[1, 2]
+        else:
+            raw_x = scaled_x
+            raw_y = scaled_y
+
         mapped.append(
             {
                 **point,
-                "raw_x": point["x"] * sx,
-                "raw_y": point["y"] * sy,
+                "raw_x": raw_x,
+                "raw_y": raw_y,
             }
         )
     return mapped
@@ -231,6 +265,13 @@ def line_distances(line: LineModel, points: np.ndarray) -> np.ndarray:
     return np.abs(delta[:, 0] * v[1] - delta[:, 1] * v[0])
 
 
+def signed_line_offsets(line: LineModel, points: np.ndarray) -> np.ndarray:
+    v = line.direction
+    p0 = line.point
+    delta = points - p0
+    return delta[:, 0] * v[1] - delta[:, 1] * v[0]
+
+
 def refine_line_with_mask(mask: np.ndarray, provisional: LineModel, other: LineModel) -> tuple[LineModel, tuple[np.ndarray, np.ndarray]]:
     ys, xs = np.where(mask > 0)
     pixels = np.column_stack([xs, ys]).astype(np.float32)
@@ -247,6 +288,44 @@ def refine_line_with_mask(mask: np.ndarray, provisional: LineModel, other: LineM
 
     line = fit_line_from_points([point for point in assigned])
     return line, line_segment_from_group(line, assigned)
+
+
+def extract_joint_lines_from_mask(
+    mask: np.ndarray,
+    upper_points: list[np.ndarray],
+    lower_points: list[np.ndarray],
+) -> tuple[tuple[LineModel, tuple[np.ndarray, np.ndarray]], tuple[LineModel, tuple[np.ndarray, np.ndarray]]]:
+    upper_guess = fit_line_from_points(upper_points)
+    lower_guess = fit_line_from_points(lower_points)
+
+    ys, xs = np.where(mask > 0)
+    pixels = np.column_stack([xs, ys]).astype(np.float32)
+    if len(pixels) == 0:
+        raise ValueError("No line pixels found after raw/line subtraction.")
+
+    midpoints = [(upper + lower) * 0.5 for upper, lower in zip(upper_points, lower_points)]
+    separator = fit_line_from_points(midpoints)
+    upper_sign = float(np.mean(signed_line_offsets(separator, np.asarray(upper_points, dtype=np.float32))))
+    if abs(upper_sign) < 1e-6:
+        upper_sign = -1.0
+
+    split_values = signed_line_offsets(separator, pixels) * upper_sign
+    upper_pixels = pixels[split_values >= 0]
+    lower_pixels = pixels[split_values < 0]
+
+    upper_pixels = upper_pixels[line_distances(upper_guess, upper_pixels) < 35.0] if len(upper_pixels) else upper_pixels
+    lower_pixels = lower_pixels[line_distances(lower_guess, lower_pixels) < 35.0] if len(lower_pixels) else lower_pixels
+
+    if len(upper_pixels) < 20 or len(lower_pixels) < 20:
+        upper_line, upper_segment = refine_line_with_mask(mask, upper_guess, lower_guess)
+        lower_line, lower_segment = refine_line_with_mask(mask, lower_guess, upper_guess)
+        return (upper_line, upper_segment), (lower_line, lower_segment)
+
+    upper_line = fit_line_from_points([point for point in upper_pixels])
+    lower_line = fit_line_from_points([point for point in lower_pixels])
+    upper_segment = line_segment_from_group(upper_line, upper_pixels)
+    lower_segment = line_segment_from_group(lower_line, lower_pixels)
+    return (upper_line, upper_segment), (lower_line, lower_segment)
 
 
 def line_segment_from_group(line: LineModel, points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -279,6 +358,13 @@ def acute_angle_degrees(vec_a: np.ndarray, vec_b: np.ndarray) -> float:
     return math.degrees(math.acos(dot))
 
 
+def angle_degrees(vec_a: np.ndarray, vec_b: np.ndarray) -> float:
+    a = vec_a / np.linalg.norm(vec_a)
+    b = vec_b / np.linalg.norm(vec_b)
+    dot = float(np.clip(np.dot(a, b), -1.0, 1.0))
+    return math.degrees(math.acos(dot))
+
+
 def direction_angle(vec: np.ndarray) -> float:
     return math.atan2(float(vec[1]), float(vec[0]))
 
@@ -288,22 +374,41 @@ def shortest_arc(start: float, end: float) -> tuple[float, float]:
     return start, start + delta
 
 
-def draw_line(image: np.ndarray, start: np.ndarray, end: np.ndarray, color: tuple[int, int, int], thickness: int = 6) -> None:
+def draw_line(image: np.ndarray, start: np.ndarray, end: np.ndarray, color: tuple[int, int, int], thickness: int = 2) -> None:
     cv2.line(image, tuple(np.round(start).astype(int)), tuple(np.round(end).astype(int)), color, thickness, cv2.LINE_AA)
 
 
-def centered_segment_from_reference(
+def ray_endpoint_from_reference(
     center: np.ndarray,
     direction: np.ndarray,
-    reference_segment: tuple[np.ndarray, np.ndarray],
-    margin: float = 36.0,
-    min_half_length: float = 120.0,
-) -> tuple[np.ndarray, np.ndarray]:
-    reference = np.vstack(reference_segment).astype(np.float32)
+    reference_points: np.ndarray | list[np.ndarray] | tuple[np.ndarray, np.ndarray],
+    margin: float = 28.0,
+    min_length: float = 120.0,
+) -> np.ndarray:
+    reference = np.vstack(reference_points).astype(np.float32)
     unit = direction / np.linalg.norm(direction)
-    projected = np.abs((reference - center) @ unit)
-    half_length = max(min_half_length, float(projected.max()) + margin)
-    return center - unit * half_length, center + unit * half_length
+    projections = (reference - center) @ unit
+    forward = projections[projections > 0]
+    length = max(min_length, float(forward.max()) + margin) if len(forward) else min_length
+    return center + unit * length
+
+
+def sort_points_by_x(points: list[np.ndarray] | np.ndarray) -> np.ndarray:
+    arr = np.asarray(points, dtype=np.float32).reshape(-1, 2)
+    order = np.argsort(arr[:, 0])
+    return arr[order]
+
+
+def draw_joint_points(
+    image: np.ndarray,
+    points: list[np.ndarray] | np.ndarray,
+    color: tuple[int, int, int],
+    radius: int = 4,
+) -> None:
+    for point in np.asarray(points, dtype=np.float32).reshape(-1, 2):
+        center = tuple(np.round(point).astype(int))
+        cv2.circle(image, center, radius + 2, (255, 255, 255), -1, cv2.LINE_AA)
+        cv2.circle(image, center, radius, color, -1, cv2.LINE_AA)
 
 
 def draw_arc(image: np.ndarray, center: np.ndarray, vec_a: np.ndarray, vec_b: np.ndarray, radius: int, color: tuple[int, int, int]) -> np.ndarray:
@@ -318,7 +423,7 @@ def draw_arc(image: np.ndarray, center: np.ndarray, vec_a: np.ndarray, vec_b: np
         ],
         dtype=np.int32,
     )
-    cv2.polylines(image, [points], False, color, 5, cv2.LINE_AA)
+    cv2.polylines(image, [points], False, color, 3, cv2.LINE_AA)
     mid_angle = 0.5 * (start + end)
     return np.array(
         [
@@ -330,7 +435,13 @@ def draw_arc(image: np.ndarray, center: np.ndarray, vec_a: np.ndarray, vec_b: np
 
 
 def choose_closer_line_ray(axis_vec: np.ndarray, line_vec: np.ndarray) -> np.ndarray:
-    if acute_angle_degrees(axis_vec, line_vec) <= acute_angle_degrees(axis_vec, -line_vec):
+    if angle_degrees(axis_vec, line_vec) <= angle_degrees(axis_vec, -line_vec):
+        return line_vec
+    return -line_vec
+
+
+def choose_farther_line_ray(axis_vec: np.ndarray, line_vec: np.ndarray) -> np.ndarray:
+    if angle_degrees(axis_vec, line_vec) >= angle_degrees(axis_vec, -line_vec):
         return line_vec
     return -line_vec
 
@@ -370,11 +481,12 @@ def draw_measurement(
     joint_segment: tuple[np.ndarray, np.ndarray],
     joint_intersection: np.ndarray,
     axis_origin: np.ndarray,
+    joint_ray: np.ndarray,
     angle_value: float,
     label: str,
 ) -> np.ndarray:
     canvas = raw_image.copy()
-    annotate_measurement(canvas, joint_segment, joint_intersection, axis_origin, angle_value, label)
+    annotate_measurement(canvas, joint_segment, joint_intersection, axis_origin, joint_ray, angle_value, label)
     return canvas
 
 
@@ -383,25 +495,20 @@ def annotate_measurement(
     joint_segment: tuple[np.ndarray, np.ndarray],
     joint_intersection: np.ndarray,
     axis_origin: np.ndarray,
+    joint_ray: np.ndarray,
     angle_value: float,
     label: str,
 ) -> None:
     color = (255, 0, 255)
 
-    seg_start, seg_end = centered_segment_from_reference(
-        joint_intersection,
-        joint_segment[1] - joint_segment[0],
-        joint_segment,
-    )
-    draw_line(canvas, seg_start, seg_end, color)
+    draw_joint_points(canvas, [axis_origin], color, radius=4)
+    draw_line(canvas, joint_segment[0], joint_segment[1], color, thickness=2)
+    joint_ray_end = ray_endpoint_from_reference(joint_intersection, joint_ray, joint_segment)
+    draw_line(canvas, joint_intersection, joint_ray_end, color)
     draw_line(canvas, axis_origin, joint_intersection, color)
 
     axis_vec = axis_origin - joint_intersection
-    line_vec = choose_closer_line_ray(axis_vec, seg_start - joint_intersection)
-    if acute_angle_degrees(axis_vec, seg_end - joint_intersection) < acute_angle_degrees(axis_vec, line_vec):
-        line_vec = seg_end - joint_intersection
-
-    text_anchor = draw_arc(canvas, joint_intersection, axis_vec, line_vec, radius=52, color=color)
+    text_anchor = draw_arc(canvas, joint_intersection, axis_vec, joint_ray, radius=52, color=color)
     text = f"{label}={angle_value:.1f} deg"
     draw_text_box(canvas, text, text_anchor)
 
@@ -419,13 +526,19 @@ def measure_case(point_path: Path, line_path: Path, raw_path: Path | None) -> tu
     bbox = knee_bbox_from_mask(line_mask)
 
     point_candidates = detect_blue_points(point_image)
-    mapped_points = map_points_to_raw(point_candidates, raw_gray.shape, point_image.shape[:2])
+    point_to_raw_warp = estimate_point_to_raw_transform(raw_image, point_image)
+    mapped_points = map_points_to_raw(
+        point_candidates,
+        raw_gray.shape,
+        point_image.shape[:2],
+        point_to_raw_warp=point_to_raw_warp,
+    )
     hip, ankle, upper_points, lower_points = select_measurement_points(mapped_points, bbox)
 
-    upper_line_guess = fit_line_from_points(upper_points)
-    lower_line_guess = fit_line_from_points(lower_points)
-    upper_line, upper_segment = refine_line_with_mask(line_mask, upper_line_guess, lower_line_guess)
-    lower_line, lower_segment = refine_line_with_mask(line_mask, lower_line_guess, upper_line_guess)
+    upper_line = fit_line_from_points(upper_points)
+    lower_line = fit_line_from_points(lower_points)
+    upper_segment = line_segment_from_group(upper_line, np.asarray(upper_points, dtype=np.float32))
+    lower_segment = line_segment_from_group(lower_line, np.asarray(lower_points, dtype=np.float32))
 
     upper_center = upper_points[1]
     lower_center = lower_points[1]
@@ -435,14 +548,20 @@ def measure_case(point_path: Path, line_path: Path, raw_path: Path | None) -> tu
     upper_intersection = intersect_lines(femur_axis, upper_line)
     lower_intersection = intersect_lines(tibia_axis, lower_line)
 
-    e_angle = acute_angle_degrees(hip - upper_intersection, upper_line.direction)
-    g_angle = acute_angle_degrees(ankle - lower_intersection, lower_line.direction)
+    upper_axis_vec = hip - upper_intersection
+    lower_axis_vec = ankle - lower_intersection
+    upper_joint_ray = choose_closer_line_ray(upper_axis_vec, upper_line.direction)
+    lower_joint_ray = choose_farther_line_ray(lower_axis_vec, lower_line.direction)
+
+    e_angle = angle_degrees(upper_axis_vec, upper_joint_ray)
+    g_angle = angle_degrees(lower_axis_vec, lower_joint_ray)
 
     e_image = draw_measurement(
         raw_image,
         upper_segment,
         upper_intersection,
         hip,
+        upper_joint_ray,
         e_angle,
         UPPER_ANGLE_LABEL,
     )
@@ -451,6 +570,7 @@ def measure_case(point_path: Path, line_path: Path, raw_path: Path | None) -> tu
         lower_segment,
         lower_intersection,
         ankle,
+        lower_joint_ray,
         g_angle,
         LOWER_ANGLE_LABEL,
     )
@@ -460,6 +580,7 @@ def measure_case(point_path: Path, line_path: Path, raw_path: Path | None) -> tu
         upper_segment,
         upper_intersection,
         hip,
+        upper_joint_ray,
         e_angle,
         UPPER_ANGLE_LABEL,
     )
@@ -468,6 +589,7 @@ def measure_case(point_path: Path, line_path: Path, raw_path: Path | None) -> tu
         lower_segment,
         lower_intersection,
         ankle,
+        lower_joint_ray,
         g_angle,
         LOWER_ANGLE_LABEL,
     )
@@ -483,6 +605,7 @@ def measure_case(point_path: Path, line_path: Path, raw_path: Path | None) -> tu
             "lower_angle_label": LOWER_ANGLE_LABEL,
             "upper_angle_full_name": UPPER_ANGLE_FULL_NAME,
             "lower_angle_full_name": LOWER_ANGLE_FULL_NAME,
+            "point_to_raw_warp": point_to_raw_warp,
             "e_image": e_image,
             "g_image": g_image,
             "combined_image": combined_image,

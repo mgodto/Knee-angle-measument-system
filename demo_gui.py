@@ -72,6 +72,161 @@ def read_preview_image(path: Path) -> cv2.typing.MatLike | None:
     return image
 
 
+class ZoomableImageCanvas(ttk.Frame):
+    def __init__(self, master: tk.Misc, empty_text: str, bg: str = "#111111") -> None:
+        super().__init__(master)
+        self.empty_text = empty_text
+        self.bg = bg
+        self.zoom = 1.0
+        self.min_zoom = 0.1
+        self.max_zoom = 8.0
+        self._base_image: Image.Image | None = None
+        self._photo: ImageTk.PhotoImage | None = None
+        self._auto_fit_pending = False
+
+        self.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
+
+        self.canvas = tk.Canvas(self, bg=bg, highlightthickness=0)
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+
+        self.v_scroll = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.v_scroll.grid(row=0, column=1, sticky="ns")
+        self.h_scroll = ttk.Scrollbar(self, orient="horizontal", command=self.canvas.xview)
+        self.h_scroll.grid(row=1, column=0, sticky="ew")
+        self.canvas.configure(xscrollcommand=self.h_scroll.set, yscrollcommand=self.v_scroll.set)
+
+        self._image_id = self.canvas.create_image(0, 0, anchor="nw")
+        self._text_id = self.canvas.create_text(0, 0, text=empty_text, fill="#dddddd", font=("Helvetica", 16))
+
+        self.canvas.bind("<Configure>", self._on_configure)
+        self.canvas.bind("<Enter>", lambda _event: self.canvas.focus_set())
+        self.canvas.bind("<MouseWheel>", self._on_mousewheel)
+        self.canvas.bind("<Button-4>", self._on_mousewheel)
+        self.canvas.bind("<Button-5>", self._on_mousewheel)
+        self.canvas.bind("<ButtonPress-1>", self._on_drag_start)
+        self.canvas.bind("<B1-Motion>", self._on_drag_move)
+        self.canvas.bind("<Double-Button-1>", self._on_double_click)
+
+        self.clear()
+
+    def clear(self, text: str | None = None) -> None:
+        self._base_image = None
+        self._photo = None
+        self.zoom = 1.0
+        self._auto_fit_pending = False
+        self.canvas.itemconfigure(self._image_id, image="", state="hidden")
+        self.canvas.itemconfigure(self._text_id, text=text or self.empty_text, state="normal")
+        self.canvas.configure(scrollregion=(0, 0, 1, 1))
+        self._center_text()
+
+    def set_image(self, image_bgr) -> None:
+        rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+        self._base_image = Image.fromarray(rgb)
+        if self.canvas.winfo_width() > 1 and self.canvas.winfo_height() > 1:
+            self._auto_fit_pending = False
+            self.reset_view()
+        else:
+            self._auto_fit_pending = True
+            self._render()
+
+    def reset_view(self) -> None:
+        if self._base_image is None:
+            return
+        canvas_w = max(self.canvas.winfo_width(), 1)
+        canvas_h = max(self.canvas.winfo_height(), 1)
+        fit_zoom = min(canvas_w / self._base_image.width, canvas_h / self._base_image.height)
+        self.zoom = min(max(fit_zoom, self.min_zoom), self.max_zoom)
+        self._render()
+        self.canvas.xview_moveto(0.0)
+        self.canvas.yview_moveto(0.0)
+
+    def _on_configure(self, _event: object) -> None:
+        if self._base_image is None:
+            self._center_text()
+            return
+        if self._auto_fit_pending:
+            self._auto_fit_pending = False
+            self.reset_view()
+
+    def _center_text(self) -> None:
+        self.canvas.coords(
+            self._text_id,
+            self.canvas.winfo_width() / 2,
+            self.canvas.winfo_height() / 2,
+        )
+
+    def _render(self) -> None:
+        if self._base_image is None:
+            self.clear()
+            return
+
+        display_w = max(1, int(round(self._base_image.width * self.zoom)))
+        display_h = max(1, int(round(self._base_image.height * self.zoom)))
+        resized = self._base_image.resize((display_w, display_h), RESAMPLING.LANCZOS)
+        self._photo = ImageTk.PhotoImage(resized)
+        self.canvas.itemconfigure(self._image_id, image=self._photo, state="normal")
+        self.canvas.coords(self._image_id, 0, 0)
+        self.canvas.itemconfigure(self._text_id, state="hidden")
+        self.canvas.configure(scrollregion=(0, 0, display_w, display_h))
+
+    def _current_display_size(self) -> tuple[int, int]:
+        if self._base_image is None:
+            return 1, 1
+        return (
+            max(1, int(round(self._base_image.width * self.zoom))),
+            max(1, int(round(self._base_image.height * self.zoom))),
+        )
+
+    def _on_mousewheel(self, event: tk.Event) -> None:
+        if self._base_image is None:
+            return
+
+        if getattr(event, "num", None) == 4 or getattr(event, "delta", 0) > 0:
+            scale = 1.15
+        elif getattr(event, "num", None) == 5 or getattr(event, "delta", 0) < 0:
+            scale = 1 / 1.15
+        else:
+            return
+
+        old_w, old_h = self._current_display_size()
+        canvas_x = self.canvas.canvasx(event.x)
+        canvas_y = self.canvas.canvasy(event.y)
+        rel_x = canvas_x / max(old_w, 1)
+        rel_y = canvas_y / max(old_h, 1)
+
+        new_zoom = min(max(self.zoom * scale, self.min_zoom), self.max_zoom)
+        if abs(new_zoom - self.zoom) < 1e-6:
+            return
+
+        self.zoom = new_zoom
+        self._render()
+
+        new_w, new_h = self._current_display_size()
+        left = rel_x * new_w - event.x
+        top = rel_y * new_h - event.y
+        self._move_view(left, top, new_w, new_h)
+
+    def _move_view(self, left: float, top: float, image_w: int, image_h: int) -> None:
+        canvas_w = max(self.canvas.winfo_width(), 1)
+        canvas_h = max(self.canvas.winfo_height(), 1)
+        max_left = max(image_w - canvas_w, 0)
+        max_top = max(image_h - canvas_h, 0)
+        clamped_left = min(max(left, 0.0), float(max_left))
+        clamped_top = min(max(top, 0.0), float(max_top))
+        self.canvas.xview_moveto(0.0 if image_w <= 0 else clamped_left / max(image_w, 1))
+        self.canvas.yview_moveto(0.0 if image_h <= 0 else clamped_top / max(image_h, 1))
+
+    def _on_drag_start(self, event: tk.Event) -> None:
+        self.canvas.scan_mark(event.x, event.y)
+
+    def _on_drag_move(self, event: tk.Event) -> None:
+        self.canvas.scan_dragto(event.x, event.y, gain=1)
+
+    def _on_double_click(self, _event: tk.Event) -> None:
+        self.reset_view()
+
+
 class MeasurementDemoApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
@@ -160,10 +315,19 @@ class MeasurementDemoApp:
         line_frame.rowconfigure(0, weight=1)
         line_frame.columnconfigure(0, weight=1)
 
-        self.point_image_label = tk.Label(point_frame, bg="#111111", fg="#dddddd", text="No point image", compound="center")
-        self.point_image_label.grid(row=0, column=0, sticky="nsew")
-        self.line_image_label = tk.Label(line_frame, bg="#111111", fg="#dddddd", text="No line image", compound="center")
-        self.line_image_label.grid(row=0, column=0, sticky="nsew")
+        self.point_view = ZoomableImageCanvas(point_frame, empty_text="No point image")
+        self.point_view.grid(row=0, column=0, sticky="nsew")
+        ttk.Label(
+            point_frame,
+            text="Mouse wheel: zoom, drag: pan, double-click: fit to window",
+        ).grid(row=1, column=0, sticky="w", pady=(8, 0))
+
+        self.line_view = ZoomableImageCanvas(line_frame, empty_text="No line image")
+        self.line_view.grid(row=0, column=0, sticky="nsew")
+        ttk.Label(
+            line_frame,
+            text="Mouse wheel: zoom, drag: pan, double-click: fit to window",
+        ).grid(row=1, column=0, sticky="w", pady=(8, 0))
 
         right = ttk.Frame(body)
         right.grid(row=0, column=1, sticky="nsew")
@@ -175,8 +339,12 @@ class MeasurementDemoApp:
         result_frame.rowconfigure(0, weight=1)
         result_frame.columnconfigure(0, weight=1)
 
-        self.result_image_label = tk.Label(result_frame, bg="#111111", fg="#dddddd", text="Run the measurement to see the result", compound="center")
-        self.result_image_label.grid(row=0, column=0, sticky="nsew")
+        self.result_view = ZoomableImageCanvas(result_frame, empty_text="Run the measurement to see the result")
+        self.result_view.grid(row=0, column=0, sticky="nsew")
+        ttk.Label(
+            result_frame,
+            text="Mouse wheel: zoom, drag: pan, double-click: fit to window",
+        ).grid(row=1, column=0, sticky="w", pady=(8, 0))
 
         stats = ttk.Frame(right, padding=(0, 10, 0, 0))
         stats.grid(row=1, column=0, sticky="ew")
@@ -232,25 +400,24 @@ class MeasurementDemoApp:
         self.raw_var.set(f"Raw image: {self.current_raw_path}" if self.current_raw_path else "Raw image: auto-detect")
 
     def _refresh_input_previews(self) -> None:
-        self._set_preview_from_path(self.point_image_label, self.current_point_path, "point_preview", (700, 360), "No point image")
-        self._set_preview_from_path(self.line_image_label, self.current_line_path, "line_preview", (700, 360), "No line image")
+        self._set_zoomable_from_path(self.point_view, self.current_point_path, "No point image")
+        self._set_zoomable_from_path(self.line_view, self.current_line_path, "No line image")
 
-    def _set_preview_from_path(
+    def _set_zoomable_from_path(
         self,
-        widget: tk.Label,
+        viewer: ZoomableImageCanvas,
         path: Path | None,
-        key: str,
-        max_size: tuple[int, int],
         empty_text: str,
     ) -> None:
         if path is None or not path.exists():
-            widget.configure(image="", text=empty_text)
+            viewer.clear(empty_text)
             return
-        image = read_preview_image(path)
+
+        image = cv2.imread(str(path))
         if image is None:
-            widget.configure(image="", text=f"Cannot read:\n{path.name}")
+            viewer.clear(f"Cannot read:\n{path.name}")
             return
-        self._set_label_image(widget, image, key, max_size)
+        viewer.set_image(image)
 
     def _set_label_image(
         self,
@@ -337,7 +504,7 @@ class MeasurementDemoApp:
         self.result_data = result
         self.current_raw_path = Path(result["raw_path"])
         self._refresh_paths()
-        self._set_label_image(self.result_image_label, result["combined_image"], "result_preview", (820, 860))
+        self.result_view.set_image(result["combined_image"])
         self.upper_angle_var.set(f"{result['upper_angle_label']}: {result['mldfa_angle']:.2f} deg")
         self.lower_angle_var.set(f"{result['lower_angle_label']}: {result['mpta_angle']:.2f} deg")
         self.status_var.set("Measurement complete. You can save the combined result image if needed.")
