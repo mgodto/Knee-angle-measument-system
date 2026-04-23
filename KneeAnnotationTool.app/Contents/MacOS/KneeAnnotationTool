@@ -1,0 +1,34 @@
+#!/bin/zsh
+
+set -euo pipefail
+
+APP_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+LOG_DIR="$APP_ROOT/logs"
+LOG_FILE="$LOG_DIR/knee_annotation_app.log"
+mkdir -p "$LOG_DIR"
+
+PREFERRED_PYTHON="/opt/miniconda3/envs/gait_analysis/bin/python3"
+if [[ -x "$PREFERRED_PYTHON" ]]; then
+  PYTHON_BIN="$PREFERRED_PYTHON"
+elif [[ -n "${PYTHON_BIN:-}" && -x "${PYTHON_BIN}" ]]; then
+  PYTHON_BIN="${PYTHON_BIN}"
+elif command -v python3 >/dev/null 2>&1; then
+  PYTHON_BIN="$(command -v python3)"
+else
+  osascript -e 'display alert "KneeAnnotationTool failed to start" message "Python 3 was not found. Please check the installation." as critical'
+  exit 1
+fi
+
+cd "$APP_ROOT"
+{
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching KneeAnnotationTool"
+  echo "APP_ROOT=$APP_ROOT"
+  echo "PYTHON_BIN=$PYTHON_BIN"
+} >>"$LOG_FILE"
+
+if ! "$PYTHON_BIN" -c "import tkinter, cv2, PIL" >>"$LOG_FILE" 2>&1; then
+  osascript -e "display alert \"KneeAnnotationTool failed to start\" message \"Python dependencies are missing. See log: $LOG_FILE\" as critical"
+  exit 1
+fi
+
+exec "$PYTHON_BIN" "$APP_ROOT/annotate_gui.py" >>"$LOG_FILE" 2>&1

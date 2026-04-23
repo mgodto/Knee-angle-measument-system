@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import math
 import unicodedata
 from dataclasses import dataclass
@@ -14,6 +15,23 @@ UPPER_ANGLE_LABEL = "mLDFA"
 LOWER_ANGLE_LABEL = "MPTA"
 UPPER_ANGLE_FULL_NAME = "mechanical lateral distal femoral angle"
 LOWER_ANGLE_FULL_NAME = "medial proximal tibial angle"
+ANNOTATION_VERSION = 1
+ANNOTATION_POINT_SPECS = [
+    ("hip", "Femur axis point"),
+    ("upper_left", "Upper line left"),
+    ("upper_center", "Upper line center"),
+    ("upper_right", "Upper line right"),
+    ("lower_left", "Lower line left"),
+    ("lower_center", "Lower line center"),
+    ("lower_right", "Lower line right"),
+    ("ankle", "Tibia axis point"),
+]
+ANNOTATION_POINT_NAMES = tuple(name for name, _label in ANNOTATION_POINT_SPECS)
+ANNOTATION_LINE_SPECS = [
+    ("upper_line", "Upper joint line"),
+    ("lower_line", "Lower joint line"),
+]
+ANNOTATION_LINE_NAMES = tuple(name for name, _label in ANNOTATION_LINE_SPECS)
 
 
 @dataclass
@@ -98,6 +116,105 @@ def read_color(path: Path) -> np.ndarray:
     if image is None:
         raise ValueError(f"Cannot read image: {path}")
     return image
+
+
+def point_to_array(point: dict | list | tuple | np.ndarray, name: str = "point") -> np.ndarray:
+    if isinstance(point, dict):
+        if "x" not in point or "y" not in point:
+            raise ValueError(f"Annotation point '{name}' must contain x and y.")
+        x_value = point["x"]
+        y_value = point["y"]
+    elif isinstance(point, (list, tuple, np.ndarray)) and len(point) == 2:
+        x_value, y_value = point
+    else:
+        raise ValueError(f"Annotation point '{name}' must be a 2D coordinate.")
+    return np.array([float(x_value), float(y_value)], dtype=np.float32)
+
+
+def named_points_to_arrays(named_points: dict) -> tuple[np.ndarray, np.ndarray, list[np.ndarray], list[np.ndarray]]:
+    missing = [name for name in ANNOTATION_POINT_NAMES if name not in named_points]
+    if missing:
+        raise ValueError(f"Missing annotation points: {', '.join(missing)}")
+
+    hip = point_to_array(named_points["hip"], "hip")
+    ankle = point_to_array(named_points["ankle"], "ankle")
+    upper_points = [point_to_array(named_points[name], name) for name in ("upper_left", "upper_center", "upper_right")]
+    lower_points = [point_to_array(named_points[name], name) for name in ("lower_left", "lower_center", "lower_right")]
+    return hip, ankle, upper_points, lower_points
+
+
+def build_annotation_record(
+    raw_path: Path,
+    image_shape: tuple[int, int],
+    named_points: dict,
+    named_lines: dict | None = None,
+) -> dict:
+    image_h, image_w = image_shape[:2]
+    record_points: dict[str, dict[str, float]] = {}
+    for name in ANNOTATION_POINT_NAMES:
+        point = point_to_array(named_points[name], name)
+        record_points[name] = {
+            "x": float(point[0]),
+            "y": float(point[1]),
+        }
+
+    record = {
+        "version": ANNOTATION_VERSION,
+        "raw_path": str(raw_path),
+        "raw_filename": raw_path.name,
+        "image_width": int(image_w),
+        "image_height": int(image_h),
+        "points": record_points,
+    }
+    lines_record = build_line_record(named_lines)
+    if lines_record:
+        record["lines"] = lines_record
+    return record
+
+
+def line_endpoint_pair_to_arrays(line_data: dict, name: str) -> tuple[np.ndarray, np.ndarray]:
+    if not isinstance(line_data, dict) or "p1" not in line_data or "p2" not in line_data:
+        raise ValueError(f"Annotation line '{name}' must contain p1 and p2.")
+    return point_to_array(line_data["p1"], f"{name}.p1"), point_to_array(line_data["p2"], f"{name}.p2")
+
+
+def named_lines_to_arrays(named_lines: dict | None) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+    if not named_lines:
+        return {}
+
+    converted: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+    for name in ANNOTATION_LINE_NAMES:
+        if name not in named_lines:
+            continue
+        converted[name] = line_endpoint_pair_to_arrays(named_lines[name], name)
+    return converted
+
+
+def build_line_record(named_lines: dict | None) -> dict[str, dict[str, dict[str, float]]]:
+    record: dict[str, dict[str, dict[str, float]]] = {}
+    for name, (p1, p2) in named_lines_to_arrays(named_lines).items():
+        record[name] = {
+            "p1": {"x": float(p1[0]), "y": float(p1[1])},
+            "p2": {"x": float(p2[0]), "y": float(p2[1])},
+        }
+    return record
+
+
+def load_annotation(path: Path) -> dict:
+    with path.open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
+
+    if "points" not in data or not isinstance(data["points"], dict):
+        raise ValueError(f"Invalid annotation file: {path}")
+
+    missing = [name for name in ANNOTATION_POINT_NAMES if name not in data["points"]]
+    if missing:
+        raise ValueError(f"Annotation file is missing points: {', '.join(missing)}")
+
+    if "lines" in data and data["lines"] is not None:
+        build_line_record(data["lines"])
+
+    return data
 
 
 def extract_line_mask(raw_gray: np.ndarray, line_gray: np.ndarray) -> np.ndarray:
@@ -258,6 +375,15 @@ def fit_line_from_points(points: list[np.ndarray]) -> LineModel:
     return LineModel(float(vx), float(vy), float(x0), float(y0))
 
 
+def line_model_from_segment(start: np.ndarray, end: np.ndarray) -> LineModel:
+    vec = np.asarray(end, dtype=np.float32) - np.asarray(start, dtype=np.float32)
+    norm = float(np.linalg.norm(vec))
+    if norm < 1e-6:
+        raise ValueError("A joint line segment must have non-zero length.")
+    direction = vec / norm
+    return LineModel(float(direction[0]), float(direction[1]), float(start[0]), float(start[1]))
+
+
 def line_distances(line: LineModel, points: np.ndarray) -> np.ndarray:
     v = line.direction
     p0 = line.point
@@ -334,6 +460,16 @@ def line_segment_from_group(line: LineModel, points: np.ndarray) -> tuple[np.nda
     projections = (points - origin) @ direction
     start = origin + direction * (projections.min() - 10.0)
     end = origin + direction * (projections.max() + 10.0)
+    return start, end
+
+
+def line_segment_from_reference_points(line: LineModel, reference_points: list[np.ndarray] | np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    reference = np.asarray(reference_points, dtype=np.float32).reshape(-1, 2)
+    direction = line.direction
+    origin = line.point
+    projections = (reference - origin) @ direction
+    start = origin + direction * projections.min()
+    end = origin + direction * projections.max()
     return start, end
 
 
@@ -513,32 +649,26 @@ def annotate_measurement(
     draw_text_box(canvas, text, text_anchor)
 
 
-def measure_case(point_path: Path, line_path: Path, raw_path: Path | None) -> tuple[dict, dict]:
-    raw_path = resolve_raw_path(point_path, line_path, raw_path)
-
-    raw_image = read_color(raw_path)
-    line_image = read_color(line_path)
-    point_image = read_color(point_path)
-
-    raw_gray = cv2.cvtColor(raw_image, cv2.COLOR_BGR2GRAY)
-    line_gray = cv2.cvtColor(line_image, cv2.COLOR_BGR2GRAY)
-    line_mask = extract_line_mask(raw_gray, line_gray)
-    bbox = knee_bbox_from_mask(line_mask)
-
-    point_candidates = detect_blue_points(point_image)
-    point_to_raw_warp = estimate_point_to_raw_transform(raw_image, point_image)
-    mapped_points = map_points_to_raw(
-        point_candidates,
-        raw_gray.shape,
-        point_image.shape[:2],
-        point_to_raw_warp=point_to_raw_warp,
-    )
-    hip, ankle, upper_points, lower_points = select_measurement_points(mapped_points, bbox)
-
-    upper_line = fit_line_from_points(upper_points)
-    lower_line = fit_line_from_points(lower_points)
-    upper_segment = line_segment_from_group(upper_line, np.asarray(upper_points, dtype=np.float32))
-    lower_segment = line_segment_from_group(lower_line, np.asarray(lower_points, dtype=np.float32))
+def measure_from_named_points(
+    raw_image: np.ndarray,
+    named_points: dict,
+    raw_path: Path | None = None,
+    named_lines: dict | None = None,
+) -> tuple[dict, dict]:
+    hip, ankle, upper_points, lower_points = named_points_to_arrays(named_points)
+    converted_lines = named_lines_to_arrays(named_lines)
+    if "upper_line" in converted_lines and "lower_line" in converted_lines:
+        upper_segment = converted_lines["upper_line"]
+        lower_segment = converted_lines["lower_line"]
+        upper_line = line_model_from_segment(*upper_segment)
+        lower_line = line_model_from_segment(*lower_segment)
+        line_source = "manual_lines"
+    else:
+        upper_line = fit_line_from_points(upper_points)
+        lower_line = fit_line_from_points(lower_points)
+        upper_segment = line_segment_from_reference_points(upper_line, upper_points)
+        lower_segment = line_segment_from_reference_points(lower_line, lower_points)
+        line_source = "points_fit"
 
     upper_center = upper_points[1]
     lower_center = lower_points[1]
@@ -605,7 +735,6 @@ def measure_case(point_path: Path, line_path: Path, raw_path: Path | None) -> tu
             "lower_angle_label": LOWER_ANGLE_LABEL,
             "upper_angle_full_name": UPPER_ANGLE_FULL_NAME,
             "lower_angle_full_name": LOWER_ANGLE_FULL_NAME,
-            "point_to_raw_warp": point_to_raw_warp,
             "e_image": e_image,
             "g_image": g_image,
             "combined_image": combined_image,
@@ -615,28 +744,160 @@ def measure_case(point_path: Path, line_path: Path, raw_path: Path | None) -> tu
             "ankle": ankle,
             "upper_center": upper_center,
             "lower_center": lower_center,
-            "bbox": bbox,
+            "upper_points": np.asarray(upper_points, dtype=np.float32),
+            "lower_points": np.asarray(lower_points, dtype=np.float32),
+            "upper_segment": np.asarray(upper_segment, dtype=np.float32),
+            "lower_segment": np.asarray(lower_segment, dtype=np.float32),
+            "line_source": line_source,
         },
     )
 
 
+def render_annotation_point_image(raw_image: np.ndarray, named_points: dict) -> np.ndarray:
+    canvas = raw_image.copy()
+    color = (255, 160, 0)
+    for name in ANNOTATION_POINT_NAMES:
+        point = point_to_array(named_points[name], name)
+        draw_joint_points(canvas, [point], color, radius=5)
+    return canvas
+
+
+def render_annotation_line_image(
+    raw_image: np.ndarray,
+    named_points: dict,
+    named_lines: dict | None = None,
+) -> np.ndarray:
+    canvas = raw_image.copy()
+    converted_lines = named_lines_to_arrays(named_lines)
+    if "upper_line" in converted_lines and "lower_line" in converted_lines:
+        upper_segment = converted_lines["upper_line"]
+        lower_segment = converted_lines["lower_line"]
+    else:
+        _hip, _ankle, upper_points, lower_points = named_points_to_arrays(named_points)
+        upper_line = fit_line_from_points(upper_points)
+        lower_line = fit_line_from_points(lower_points)
+        upper_segment = line_segment_from_reference_points(upper_line, upper_points)
+        lower_segment = line_segment_from_reference_points(lower_line, lower_points)
+    color = (255, 0, 255)
+    draw_line(canvas, upper_segment[0], upper_segment[1], color, thickness=2)
+    draw_line(canvas, lower_segment[0], lower_segment[1], color, thickness=2)
+    return canvas
+
+
+def measure_from_annotation(annotation_path: Path, raw_path: Path | None = None) -> tuple[dict, dict]:
+    annotation = load_annotation(annotation_path)
+    if raw_path is None:
+        raw_candidate = Path(annotation["raw_path"])
+        raw_path = raw_candidate
+    raw_image = read_color(raw_path)
+    return measure_from_named_points(
+        raw_image,
+        annotation["points"],
+        raw_path=raw_path,
+        named_lines=annotation.get("lines"),
+    )
+
+
+def save_annotation_bundle(
+    raw_path: Path,
+    named_points: dict,
+    out_dir: Path,
+    prefix: str | None = None,
+    named_lines: dict | None = None,
+) -> tuple[dict[str, Path], dict]:
+    raw_image = read_color(raw_path)
+    result, _debug = measure_from_named_points(raw_image, named_points, raw_path=raw_path, named_lines=named_lines)
+    point_image = render_annotation_point_image(raw_image, named_points)
+    line_image = render_annotation_line_image(raw_image, named_points, named_lines=named_lines)
+    annotation = build_annotation_record(raw_path, raw_image.shape, named_points, named_lines=named_lines)
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    base_prefix = prefix or normalize_name(raw_path.stem).replace(" ", "_")
+    annotation_path = out_dir / f"{base_prefix}_annotation.json"
+    point_path = out_dir / f"{base_prefix}_point.jpg"
+    line_path = out_dir / f"{base_prefix}_line.jpg"
+    combined_path = out_dir / f"{base_prefix}_combined.jpg"
+
+    with annotation_path.open("w", encoding="utf-8") as handle:
+        json.dump(annotation, handle, indent=2)
+    cv2.imwrite(str(point_path), point_image)
+    cv2.imwrite(str(line_path), line_image)
+    cv2.imwrite(str(combined_path), result["combined_image"])
+
+    return (
+        {
+            "annotation": annotation_path,
+            "point_image": point_path,
+            "line_image": line_path,
+            "combined_image": combined_path,
+        },
+        result,
+    )
+
+
+def measure_case(point_path: Path, line_path: Path, raw_path: Path | None) -> tuple[dict, dict]:
+    raw_path = resolve_raw_path(point_path, line_path, raw_path)
+
+    raw_image = read_color(raw_path)
+    line_image = read_color(line_path)
+    point_image = read_color(point_path)
+
+    raw_gray = cv2.cvtColor(raw_image, cv2.COLOR_BGR2GRAY)
+    line_gray = cv2.cvtColor(line_image, cv2.COLOR_BGR2GRAY)
+    line_mask = extract_line_mask(raw_gray, line_gray)
+    bbox = knee_bbox_from_mask(line_mask)
+
+    point_candidates = detect_blue_points(point_image)
+    point_to_raw_warp = estimate_point_to_raw_transform(raw_image, point_image)
+    mapped_points = map_points_to_raw(
+        point_candidates,
+        raw_gray.shape,
+        point_image.shape[:2],
+        point_to_raw_warp=point_to_raw_warp,
+    )
+    hip, ankle, upper_points, lower_points = select_measurement_points(mapped_points, bbox)
+    named_points = {
+        "hip": hip,
+        "upper_left": upper_points[0],
+        "upper_center": upper_points[1],
+        "upper_right": upper_points[2],
+        "lower_left": lower_points[0],
+        "lower_center": lower_points[1],
+        "lower_right": lower_points[2],
+        "ankle": ankle,
+    }
+    result, debug = measure_from_named_points(raw_image, named_points, raw_path=raw_path)
+    debug["bbox"] = bbox
+    debug["point_to_raw_warp"] = point_to_raw_warp
+    return result, debug
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Measure the mLDFA and MPTA angles from point and line markup images."
+        description="Measure the mLDFA and MPTA angles from markup images or a structured annotation file."
     )
-    parser.add_argument("--point", type=Path, required=True, help="Path to the point markup image.")
-    parser.add_argument("--line", type=Path, required=True, help="Path to the line markup image.")
+    parser.add_argument("--annotation", type=Path, help="Path to a JSON annotation file exported by annotate_gui.py.")
+    parser.add_argument("--point", type=Path, help="Path to the point markup image.")
+    parser.add_argument("--line", type=Path, help="Path to the line markup image.")
     parser.add_argument("--raw", type=Path, help="Optional raw radiograph path. Auto-detected if omitted.")
     parser.add_argument("--out-dir", type=Path, default=Path("outputs"), help="Directory for result images.")
     parser.add_argument("--prefix", type=str, help="Optional output filename prefix.")
     args = parser.parse_args()
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    result, _ = measure_case(args.point, args.line, args.raw)
+    if args.annotation is not None:
+        result, _ = measure_from_annotation(args.annotation, args.raw)
+    else:
+        if args.point is None or args.line is None:
+            parser.error("--point and --line are required unless --annotation is provided.")
+        result, _ = measure_case(args.point, args.line, args.raw)
 
     prefix = args.prefix
     if not prefix:
-        prefix = normalize_name(args.point.stem).replace("'", "").replace(" ", "_")
+        if args.annotation is not None:
+            prefix = normalize_name(args.annotation.stem).replace(" ", "_")
+        else:
+            prefix = normalize_name(args.point.stem).replace("'", "").replace(" ", "_")
 
     e_path = args.out_dir / f"{prefix}_{UPPER_ANGLE_LABEL}.jpg"
     g_path = args.out_dir / f"{prefix}_{LOWER_ANGLE_LABEL}.jpg"
