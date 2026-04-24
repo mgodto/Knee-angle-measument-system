@@ -15,6 +15,8 @@ The tool stores:
 - `*_line.jpg`: same-size preview with the 2 joint lines
 - `*_combined.jpg`: same-size measurement preview
 
+The measurement side matters because `mLDFA` uses the lateral distal femur angle and `MPTA` uses the medial proximal tibia angle. If the filename cannot identify a single side, choose `L` or `R` in the annotation tool before previewing or saving. The JSON stores this as `side`.
+
 ## Windows Packaging
 
 If you want to send the tool to a doctor as a standalone Windows app, build it on a Windows machine:

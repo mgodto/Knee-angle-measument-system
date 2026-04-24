@@ -3,6 +3,7 @@
 import argparse
 import json
 import math
+import re
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
@@ -61,12 +62,52 @@ def normalize_name(name: str) -> str:
 
 
 def infer_side(name: str) -> str | None:
-    if "RL" in name:
+    basename = normalize_name(Path(str(name)).name)
+    stem = Path(basename).stem.upper()
+
+    if re.search(r"\d+\s*RL(?:$|[^A-Z0-9])", stem) or re.search(r"(?:^|[^A-Z0-9])RL(?:$|[^A-Z0-9])", stem):
         return "RL"
-    if "L" in name:
+
+    bracket_match = re.search(r"[\[\(\{]([LR])[\]\)\}]", stem)
+    if bracket_match:
+        return bracket_match.group(1)
+
+    digit_match = re.search(r"\d+\s*([LR])(?:$|[^A-Z])", stem)
+    if digit_match:
+        return digit_match.group(1)
+
+    start_match = re.search(r"^([LR])(?:$|[^A-Z])", stem)
+    if start_match:
+        return start_match.group(1)
+
+    token_match = re.search(r"(?:^|[^A-Z0-9])([LR])(?:$|[^A-Z0-9])", stem)
+    if token_match:
+        return token_match.group(1)
+
+    return None
+
+
+def normalize_measurement_side(side: str | None) -> str | None:
+    if side is None:
+        return None
+    value = normalize_name(str(side)).strip().upper()
+    if value in {"L", "LEFT"}:
         return "L"
-    if "R" in name:
+    if value in {"R", "RIGHT"}:
         return "R"
+    return None
+
+
+def infer_knee_side_from_sources(*sources: object) -> str | None:
+    for source in sources:
+        if source is None:
+            continue
+        side = normalize_measurement_side(str(source))
+        if side is None:
+            side = infer_side(str(source))
+        side = normalize_measurement_side(side)
+        if side is not None:
+            return side
     return None
 
 
@@ -148,6 +189,7 @@ def build_annotation_record(
     image_shape: tuple[int, int],
     named_points: dict,
     named_lines: dict | None = None,
+    side: str | None = None,
 ) -> dict:
     image_h, image_w = image_shape[:2]
     record_points: dict[str, dict[str, float]] = {}
@@ -166,6 +208,9 @@ def build_annotation_record(
         "image_height": int(image_h),
         "points": record_points,
     }
+    resolved_side = normalize_measurement_side(side) or infer_knee_side_from_sources(raw_path)
+    if resolved_side is not None:
+        record["side"] = resolved_side
     lines_record = build_line_record(named_lines)
     if lines_record:
         record["lines"] = lines_record
@@ -582,6 +627,20 @@ def choose_farther_line_ray(axis_vec: np.ndarray, line_vec: np.ndarray) -> np.nd
     return -line_vec
 
 
+def choose_line_ray_by_screen_side(line_vec: np.ndarray, screen_side: str) -> np.ndarray:
+    desired = np.array([-1.0, 0.0], dtype=np.float32) if screen_side == "left" else np.array([1.0, 0.0], dtype=np.float32)
+    return line_vec if float(np.dot(line_vec, desired)) >= float(np.dot(-line_vec, desired)) else -line_vec
+
+
+def anatomical_angle_screen_sides(side: str | None) -> tuple[str, str] | None:
+    normalized_side = normalize_measurement_side(side)
+    if normalized_side == "R":
+        return "left", "right"
+    if normalized_side == "L":
+        return "right", "left"
+    return None
+
+
 def draw_text_box(
     image: np.ndarray,
     text: str,
@@ -654,6 +713,7 @@ def measure_from_named_points(
     named_points: dict,
     raw_path: Path | None = None,
     named_lines: dict | None = None,
+    side: str | None = None,
 ) -> tuple[dict, dict]:
     hip, ankle, upper_points, lower_points = named_points_to_arrays(named_points)
     converted_lines = named_lines_to_arrays(named_lines)
@@ -680,8 +740,19 @@ def measure_from_named_points(
 
     upper_axis_vec = hip - upper_intersection
     lower_axis_vec = ankle - lower_intersection
-    upper_joint_ray = choose_closer_line_ray(upper_axis_vec, upper_line.direction)
-    lower_joint_ray = choose_farther_line_ray(lower_axis_vec, lower_line.direction)
+    measurement_side = normalize_measurement_side(side) or infer_knee_side_from_sources(raw_path)
+    screen_sides = anatomical_angle_screen_sides(measurement_side)
+    if screen_sides is None:
+        upper_joint_ray = choose_closer_line_ray(upper_axis_vec, upper_line.direction)
+        lower_joint_ray = choose_farther_line_ray(lower_axis_vec, lower_line.direction)
+        angle_side_source = "geometric_fallback"
+        upper_angle_screen_side = None
+        lower_angle_screen_side = None
+    else:
+        upper_angle_screen_side, lower_angle_screen_side = screen_sides
+        upper_joint_ray = choose_line_ray_by_screen_side(upper_line.direction, upper_angle_screen_side)
+        lower_joint_ray = choose_line_ray_by_screen_side(lower_line.direction, lower_angle_screen_side)
+        angle_side_source = "anatomical_side"
 
     e_angle = angle_degrees(upper_axis_vec, upper_joint_ray)
     g_angle = angle_degrees(lower_axis_vec, lower_joint_ray)
@@ -735,6 +806,10 @@ def measure_from_named_points(
             "lower_angle_label": LOWER_ANGLE_LABEL,
             "upper_angle_full_name": UPPER_ANGLE_FULL_NAME,
             "lower_angle_full_name": LOWER_ANGLE_FULL_NAME,
+            "side": measurement_side,
+            "angle_side_source": angle_side_source,
+            "upper_angle_screen_side": upper_angle_screen_side,
+            "lower_angle_screen_side": lower_angle_screen_side,
             "e_image": e_image,
             "g_image": g_image,
             "combined_image": combined_image,
@@ -749,6 +824,8 @@ def measure_from_named_points(
             "upper_segment": np.asarray(upper_segment, dtype=np.float32),
             "lower_segment": np.asarray(lower_segment, dtype=np.float32),
             "line_source": line_source,
+            "side": measurement_side,
+            "angle_side_source": angle_side_source,
         },
     )
 
@@ -784,17 +861,27 @@ def render_annotation_line_image(
     return canvas
 
 
-def measure_from_annotation(annotation_path: Path, raw_path: Path | None = None) -> tuple[dict, dict]:
+def measure_from_annotation(
+    annotation_path: Path,
+    raw_path: Path | None = None,
+    side: str | None = None,
+) -> tuple[dict, dict]:
     annotation = load_annotation(annotation_path)
     if raw_path is None:
         raw_candidate = Path(annotation["raw_path"])
         raw_path = raw_candidate
+    measurement_side = (
+        normalize_measurement_side(side)
+        or normalize_measurement_side(annotation.get("side"))
+        or infer_knee_side_from_sources(annotation_path, raw_path, annotation.get("raw_filename"), annotation.get("raw_path"))
+    )
     raw_image = read_color(raw_path)
     return measure_from_named_points(
         raw_image,
         annotation["points"],
         raw_path=raw_path,
         named_lines=annotation.get("lines"),
+        side=measurement_side,
     )
 
 
@@ -804,12 +891,20 @@ def save_annotation_bundle(
     out_dir: Path,
     prefix: str | None = None,
     named_lines: dict | None = None,
+    side: str | None = None,
 ) -> tuple[dict[str, Path], dict]:
     raw_image = read_color(raw_path)
-    result, _debug = measure_from_named_points(raw_image, named_points, raw_path=raw_path, named_lines=named_lines)
+    measurement_side = normalize_measurement_side(side) or infer_knee_side_from_sources(raw_path)
+    result, _debug = measure_from_named_points(
+        raw_image,
+        named_points,
+        raw_path=raw_path,
+        named_lines=named_lines,
+        side=measurement_side,
+    )
     point_image = render_annotation_point_image(raw_image, named_points)
     line_image = render_annotation_line_image(raw_image, named_points, named_lines=named_lines)
-    annotation = build_annotation_record(raw_path, raw_image.shape, named_points, named_lines=named_lines)
+    annotation = build_annotation_record(raw_path, raw_image.shape, named_points, named_lines=named_lines, side=measurement_side)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     base_prefix = prefix or normalize_name(raw_path.stem).replace(" ", "_")
@@ -835,8 +930,14 @@ def save_annotation_bundle(
     )
 
 
-def measure_case(point_path: Path, line_path: Path, raw_path: Path | None) -> tuple[dict, dict]:
+def measure_case(
+    point_path: Path,
+    line_path: Path,
+    raw_path: Path | None,
+    side: str | None = None,
+) -> tuple[dict, dict]:
     raw_path = resolve_raw_path(point_path, line_path, raw_path)
+    measurement_side = normalize_measurement_side(side) or infer_knee_side_from_sources(point_path, line_path, raw_path)
 
     raw_image = read_color(raw_path)
     line_image = read_color(line_path)
@@ -866,9 +967,10 @@ def measure_case(point_path: Path, line_path: Path, raw_path: Path | None) -> tu
         "lower_right": lower_points[2],
         "ankle": ankle,
     }
-    result, debug = measure_from_named_points(raw_image, named_points, raw_path=raw_path)
+    result, debug = measure_from_named_points(raw_image, named_points, raw_path=raw_path, side=measurement_side)
     debug["bbox"] = bbox
     debug["point_to_raw_warp"] = point_to_raw_warp
+    debug["side"] = measurement_side
     return result, debug
 
 
@@ -880,17 +982,18 @@ def main() -> None:
     parser.add_argument("--point", type=Path, help="Path to the point markup image.")
     parser.add_argument("--line", type=Path, help="Path to the line markup image.")
     parser.add_argument("--raw", type=Path, help="Optional raw radiograph path. Auto-detected if omitted.")
+    parser.add_argument("--side", choices=["L", "R"], help="Patient knee side. Overrides side inferred from filenames.")
     parser.add_argument("--out-dir", type=Path, default=Path("outputs"), help="Directory for result images.")
     parser.add_argument("--prefix", type=str, help="Optional output filename prefix.")
     args = parser.parse_args()
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     if args.annotation is not None:
-        result, _ = measure_from_annotation(args.annotation, args.raw)
+        result, _ = measure_from_annotation(args.annotation, args.raw, side=args.side)
     else:
         if args.point is None or args.line is None:
             parser.error("--point and --line are required unless --annotation is provided.")
-        result, _ = measure_case(args.point, args.line, args.raw)
+        result, _ = measure_case(args.point, args.line, args.raw, side=args.side)
 
     prefix = args.prefix
     if not prefix:
@@ -907,6 +1010,7 @@ def main() -> None:
     cv2.imwrite(str(combined_path), result["combined_image"])
 
     print(f"raw image : {result['raw_path']}")
+    print(f"side      : {result['side'] or 'unknown'} ({result['angle_side_source']})")
     print(f"{UPPER_ANGLE_LABEL:<10}: {result['mldfa_angle']:.2f} deg")
     print(f"{LOWER_ANGLE_LABEL:<10}: {result['mpta_angle']:.2f} deg")
     print(f"{UPPER_ANGLE_FULL_NAME}")
