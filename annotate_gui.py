@@ -15,9 +15,11 @@ from measure_angles import (
     ANNOTATION_POINT_SPECS,
     LOWER_ANGLE_LABEL,
     UPPER_ANGLE_LABEL,
+    infer_knee_side_from_sources,
     load_annotation,
     measure_from_named_points,
     normalize_name,
+    normalize_measurement_side,
     save_annotation_bundle,
 )
 
@@ -258,6 +260,8 @@ class AnnotationApp:
         self.raw_var = tk.StringVar(value="Raw image: -")
         self.annotation_var = tk.StringVar(value="Annotation: -")
         self.output_var = tk.StringVar(value=f"Output dir: {self.output_dir}")
+        self.side_var = tk.StringVar(value="Auto")
+        self.side_info_var = tk.StringVar(value="Measurement side: unknown")
         self.status_var = tk.StringVar(value="Open a raw image, then place the 8 points and 2 lines.")
         self.current_item_var = tk.StringVar(value="")
         self.preview_mode_var = tk.StringVar(value="Preview mode: waiting for annotations")
@@ -282,12 +286,23 @@ class AnnotationApp:
         ttk.Button(top, text="Delete Point", command=self.delete_selected_point).grid(row=0, column=5, padx=4)
         ttk.Button(top, text="Reset Line", command=self.reset_selected_line).grid(row=0, column=6, padx=4)
         ttk.Button(top, text="Clear All", command=self.clear_all_annotations).grid(row=0, column=7, padx=4)
+        ttk.Label(top, text="Side:").grid(row=0, column=8, padx=(16, 4))
+        side_combo = ttk.Combobox(
+            top,
+            textvariable=self.side_var,
+            values=("Auto", "L", "R"),
+            width=7,
+            state="readonly",
+        )
+        side_combo.grid(row=0, column=9, padx=4)
+        side_combo.bind("<<ComboboxSelected>>", self._on_side_changed)
 
         path_frame = ttk.Frame(self.root, padding=(12, 0, 12, 8))
         path_frame.pack(fill="x")
         ttk.Label(path_frame, textvariable=self.raw_var, wraplength=1680).pack(anchor="w")
         ttk.Label(path_frame, textvariable=self.annotation_var, wraplength=1680).pack(anchor="w")
         ttk.Label(path_frame, textvariable=self.output_var, wraplength=1680).pack(anchor="w")
+        ttk.Label(path_frame, textvariable=self.side_info_var, wraplength=1680).pack(anchor="w")
 
         body = ttk.Frame(self.root, padding=(12, 0, 12, 12))
         body.pack(fill="both", expand=True)
@@ -407,6 +422,20 @@ class AnnotationApp:
         self.root.bind("<BackSpace>", lambda _event: self.delete_selected_point())
         self.root.bind("<Delete>", lambda _event: self.delete_selected_point())
 
+    def _effective_side(self) -> str | None:
+        explicit_side = normalize_measurement_side(self.side_var.get())
+        if explicit_side is not None:
+            return explicit_side
+        return infer_knee_side_from_sources(self.annotation_path, self.raw_path)
+
+    def _set_side_from_sources(self, *sources: object) -> None:
+        side = infer_knee_side_from_sources(*sources)
+        self.side_var.set(side if side is not None else "Auto")
+
+    def _on_side_changed(self, _event: object | None = None) -> None:
+        self._refresh_metadata()
+        self._refresh_views(reset_view=False)
+
     def _snapshot_state(self) -> dict:
         return {
             "points": clone_points(self.points),
@@ -458,6 +487,7 @@ class AnnotationApp:
         self.current_index = 0
         self.current_line_name = ANNOTATION_LINE_SPECS[0][0]
         self.tool_mode.set("point")
+        self._set_side_from_sources(raw_path)
         self._refresh_metadata()
         self._refresh_lists()
         self._refresh_views(reset_view=True)
@@ -508,6 +538,11 @@ class AnnotationApp:
         self.current_index = 0
         self.current_line_name = ANNOTATION_LINE_SPECS[0][0]
         self.tool_mode.set("point")
+        annotation_side = normalize_measurement_side(annotation.get("side"))
+        if annotation_side is not None:
+            self.side_var.set(annotation_side)
+        else:
+            self._set_side_from_sources(annotation_path, raw_path)
         self._refresh_metadata()
         self._refresh_lists()
         self._refresh_views(reset_view=True)
@@ -578,7 +613,14 @@ class AnnotationApp:
             messagebox.showerror("Save Error", "Missing lines:\n" + "\n".join(missing_lines))
             return
 
+        side = self._effective_side()
+        if side is None:
+            messagebox.showerror("Save Error", "Cannot determine knee side. Choose L or R in Side before saving.")
+            return
+
         prefix = normalize_name(self.raw_path.stem).replace(" ", "_")
+        if infer_knee_side_from_sources(self.raw_path) != side:
+            prefix = f"{prefix}_{side}"
         try:
             paths, result = save_annotation_bundle(
                 self.raw_path,
@@ -586,6 +628,7 @@ class AnnotationApp:
                 self.output_dir,
                 prefix=prefix,
                 named_lines=self._named_lines_payload(),
+                side=side,
             )
         except Exception as exc:
             messagebox.showerror("Save Error", str(exc))
@@ -787,6 +830,11 @@ class AnnotationApp:
         self.raw_var.set(f"Raw image: {self.raw_path}" if self.raw_path else "Raw image: -")
         self.annotation_var.set(f"Annotation: {self.annotation_path}" if self.annotation_path else "Annotation: -")
         self.output_var.set(f"Output dir: {self.output_dir}")
+        side = self._effective_side()
+        if side is None:
+            self.side_info_var.set("Measurement side: unknown. Choose L or R before measuring/saving.")
+        else:
+            self.side_info_var.set(f"Measurement side: {side} ({'left knee' if side == 'L' else 'right knee'})")
 
     def _refresh_lists(self) -> None:
         self.point_list.delete(0, tk.END)
@@ -852,6 +900,14 @@ class AnnotationApp:
             self.preview_mode_var.set("Preview mode: waiting for all points")
             return
 
+        side = self._effective_side()
+        if side is None:
+            self.preview_view.clear("Choose Side L or R to enable anatomical angle measurement")
+            self.upper_angle_var.set(f"{UPPER_ANGLE_LABEL}: -")
+            self.lower_angle_var.set(f"{LOWER_ANGLE_LABEL}: -")
+            self.preview_mode_var.set("Preview mode: waiting for side")
+            return
+
         named_lines = self._named_lines_payload()
         preview_uses_manual_lines = len(named_lines) == len(ANNOTATION_LINE_SPECS)
         try:
@@ -860,6 +916,7 @@ class AnnotationApp:
                 self._named_points_payload(),
                 raw_path=self.raw_path,
                 named_lines=named_lines if preview_uses_manual_lines else None,
+                side=side,
             )
         except Exception as exc:
             self.preview_view.clear(f"Measurement failed:\n{exc}")
@@ -873,9 +930,9 @@ class AnnotationApp:
         self.upper_angle_var.set(f"{UPPER_ANGLE_LABEL}: {result['mldfa_angle']:.2f} deg")
         self.lower_angle_var.set(f"{LOWER_ANGLE_LABEL}: {result['mpta_angle']:.2f} deg")
         if preview_uses_manual_lines:
-            self.preview_mode_var.set("Preview mode: using manual joint lines")
+            self.preview_mode_var.set(f"Preview mode: using manual joint lines, side {side}")
         else:
-            self.preview_mode_var.set("Preview mode: provisional, using line fits from points")
+            self.preview_mode_var.set(f"Preview mode: provisional line fits, side {side}")
 
     def _render_editor_overlay(self) -> np.ndarray:
         assert self.raw_image is not None
