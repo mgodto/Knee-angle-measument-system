@@ -7,3 +7,16 @@ PYTHON_BIN=/opt/miniconda3/envs/gait_analysis/bin/python3
 [2026-04-24 14:57:43] Launching KneeAnnotationTool
 APP_ROOT=/Users/gaoji/projects/Knee_Xray
 PYTHON_BIN=/opt/miniconda3/envs/gait_analysis/bin/python3
+[2026-04-27 17:09:00] Launching KneeAnnotationTool
+APP_ROOT=/Users/gaoji/projects/Knee_Xray
+PYTHON_BIN=/opt/miniconda3/envs/gait_analysis/bin/python3
+[2026-04-28 10:14:48] Launching KneeAnnotationTool
+APP_ROOT=/Users/gaoji/projects/Knee_Xray
+PYTHON_BIN=/opt/miniconda3/envs/gait_analysis/bin/python3
+2026-04-28 10:16:37.043 python3[5386:73043] error messaging the mach port for IMKCFRunLoopWakeUpReliable
+[2026-04-28 10:55:52] Launching KneeAnnotationTool
+APP_ROOT=/Users/gaoji/projects/Knee_Xray
+PYTHON_BIN=/opt/miniconda3/envs/gait_analysis/bin/python3
+[2026-04-28 10:59:22] Launching KneeAnnotationTool
+APP_ROOT=/Users/gaoji/projects/Knee_Xray
+PYTHON_BIN=/opt/miniconda3/envs/gait_analysis/bin/python3
