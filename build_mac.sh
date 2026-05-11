@@ -12,4 +12,9 @@ pyinstaller --noconfirm --clean knee_annotation_tool.spec
 
 echo
 echo "Build finished."
-echo "Output folder: dist/KneeAnnotationTool"
+if [[ -d "dist/KneeAnnotationTool.app" ]]; then
+  echo "Output app: dist/KneeAnnotationTool.app"
+  echo "Send dist/KneeAnnotationTool.app to the doctor. Do not send the development launcher at project root."
+else
+  echo "Output folder: dist/KneeAnnotationTool"
+fi

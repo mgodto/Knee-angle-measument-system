@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -27,6 +28,12 @@ from measure_angles import (
 RESAMPLING = getattr(Image, "Resampling", Image)
 POINT_HANDLE_RADIUS = 18.0
 LINE_HANDLE_RADIUS = 18.0
+
+
+def default_output_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path.home() / "Documents" / "Knee_Xray_annotations"
+    return Path("annotations")
 
 
 def clone_points(points: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
@@ -243,7 +250,7 @@ class AnnotationApp:
         self.root.geometry("1760x1020")
         self.root.minsize(1460, 900)
 
-        self.output_dir = Path("annotations")
+        self.output_dir = default_output_dir()
         self.raw_path: Path | None = None
         self.annotation_path: Path | None = None
         self.raw_image: np.ndarray | None = None

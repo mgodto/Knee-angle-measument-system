@@ -20,3 +20,12 @@ PYTHON_BIN=/opt/miniconda3/envs/gait_analysis/bin/python3
 [2026-04-28 10:59:22] Launching KneeAnnotationTool
 APP_ROOT=/Users/gaoji/projects/Knee_Xray
 PYTHON_BIN=/opt/miniconda3/envs/gait_analysis/bin/python3
+[2026-05-11 12:58:19] Launching KneeAnnotationTool
+APP_ROOT=/Users/gaoji/projects/Knee_Xray
+PYTHON_BIN=/opt/miniconda3/envs/gait_analysis/bin/python3
+[2026-05-11 14:33:22] Launching KneeAnnotationTool
+APP_ROOT=/Users/gaoji/projects/Knee_Xray
+PYTHON_BIN=/opt/miniconda3/envs/gait_analysis/bin/python3
+[2026-05-11 17:36:34] Launching KneeAnnotationTool
+APP_ROOT=/Users/gaoji/projects/Knee_Xray
+PYTHON_BIN=/opt/miniconda3/envs/gait_analysis/bin/python3

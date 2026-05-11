@@ -17,6 +17,30 @@ The tool stores:
 
 The measurement side matters because `mLDFA` uses the lateral distal femur angle and `MPTA` uses the medial proximal tibia angle. If the filename cannot identify a single side, choose `L` or `R` in the annotation tool before previewing or saving. The JSON stores this as `side`.
 
+## Mac Packaging
+
+The `KneeAnnotationTool.app` at the project root is only a development launcher. It expects `annotate_gui.py`, `measure_angles.py`, Python, and Python packages to exist next to it on the same machine.
+
+To create a portable macOS app for another user, build the PyInstaller app on macOS:
+
+```bash
+./build_mac.sh
+```
+
+The portable output will be:
+
+```text
+dist/KneeAnnotationTool.app
+```
+
+Send `dist/KneeAnnotationTool.app`, not the development launcher at the project root. The standalone app writes exported annotations to:
+
+```text
+~/Documents/Knee_Xray_annotations
+```
+
+If macOS blocks the app because it was downloaded from the internet, right-click the app and choose `Open`.
+
 ## Windows Packaging
 
 If you want to send the tool to a doctor as a standalone Windows app, build it on a Windows machine:

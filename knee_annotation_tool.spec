@@ -1,12 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import sys
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_submodules
 
 
 project_root = Path(__file__).resolve().parent
-hiddenimports = collect_submodules("PIL")
+hiddenimports = collect_submodules("PIL") + collect_submodules("cv2")
 
 a = Analysis(
     ["annotate_gui.py"],
@@ -51,3 +52,19 @@ coll = COLLECT(
     upx_exclude=[],
     name="KneeAnnotationTool",
 )
+
+if sys.platform == "darwin":
+    app = BUNDLE(
+        coll,
+        name="KneeAnnotationTool.app",
+        icon=None,
+        bundle_identifier="com.kneexray.annotationtool",
+        info_plist={
+            "CFBundleName": "KneeAnnotationTool",
+            "CFBundleDisplayName": "KneeAnnotationTool",
+            "CFBundleShortVersionString": "1.0",
+            "CFBundleVersion": "1",
+            "NSHighResolutionCapable": True,
+            "LSMinimumSystemVersion": "11.0",
+        },
+    )

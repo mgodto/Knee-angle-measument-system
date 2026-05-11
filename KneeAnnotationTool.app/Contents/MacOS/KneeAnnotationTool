@@ -26,6 +26,11 @@ cd "$APP_ROOT"
   echo "PYTHON_BIN=$PYTHON_BIN"
 } >>"$LOG_FILE"
 
+if [[ ! -f "$APP_ROOT/annotate_gui.py" || ! -f "$APP_ROOT/measure_angles.py" ]]; then
+  osascript -e "display alert \"KneeAnnotationTool failed to start\" message \"This app is only a development launcher. It must stay next to annotate_gui.py and measure_angles.py, or you should use the standalone app built at dist/KneeAnnotationTool.app.\" as critical"
+  exit 1
+fi
+
 if ! "$PYTHON_BIN" -c "import tkinter, cv2, PIL" >>"$LOG_FILE" 2>&1; then
   osascript -e "display alert \"KneeAnnotationTool failed to start\" message \"Python dependencies are missing. See log: $LOG_FILE\" as critical"
   exit 1
