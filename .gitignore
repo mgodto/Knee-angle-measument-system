@@ -1,2 +1,42 @@
+# macOS / system files
+.DS_Store
+Thumbs.db
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.venv-build/
+
+# PyInstaller / app build artifacts
+build/
+dist/
+.pyinstaller-cache/
+*.app/
+*.dmg
+*.pkg
+*.exe
+*.msi
+*.zip
+
+# Runtime logs
+logs/
+*.log
+
+# Local outputs and medical image data
 images/
 outputs/
+annotations/
+annotations_test/
+
+# IDE / editor
+.vscode/
+.idea/
