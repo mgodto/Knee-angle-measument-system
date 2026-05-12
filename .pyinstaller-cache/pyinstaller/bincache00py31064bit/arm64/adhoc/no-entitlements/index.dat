@@ -1,0 +1,1286 @@
+{'PIL/.dylibs/libXau.6.dylib': bytearray(b'\xeeI\x17\x98\xba\x93\xd4\xfd'
+                                         b'\xb52\xa1\xc2\xd3\xbe\xf3\xbe762!'),
+ 'PIL/.dylibs/libavif.16.4.1.dylib': bytearray(b'f\xc1\x93a5\x07\x84\xad'
+                                               b'\xbfnm\xf3uQ\x1f\x00\\1\x90#'),
+ 'PIL/.dylibs/libbrotlicommon.1.2.0.dylib': bytearray(b'\xf6\xbcG\x0b'
+                                                      b'\xb5\xb5\xa6\x15'
+                                                      b'\xd0x\x17\x93'
+                                                      b'\xb6\xed\xd9\xc4'
+                                                      b'D\xf6}\x98'),
+ 'PIL/.dylibs/libbrotlidec.1.2.0.dylib': bytearray(b'\xcc\x8e\xa8\xa9'
+                                                   b'|\x07\x9c\x9c\xd4|\xc9\xc5'
+                                                   b'\x9a~\x13\xcf\xbd\xfd\xdb>'),
+ 'PIL/.dylibs/libfreetype.6.dylib': bytearray(b'o\xf9r\xba\x80qR\x97\xfe\t?\x81'
+                                              b'\xf6/\xff\xb72\xe8\xee\x1b'),
+ 'PIL/.dylibs/libharfbuzz.0.dylib': bytearray(b'\nPU\t\xff\xbc\x0f\x92'
+                                              b'p\x8b\xdc\x1dt\\\x90\xd6u,G\x06'),
+ 'PIL/.dylibs/libjpeg.62.4.0.dylib': bytearray(b'\xb9\x07M\xa9M\xf2HM)`hL'
+                                               b'\xf3)1*d\x94\x04\x10'),
+ 'PIL/.dylibs/liblcms2.2.dylib': bytearray(b'2=@!\xb1\x82\x95\xa6\xfby\xba\xed'
+                                           b')\\\x8dKN\x13\xd7\r'),
+ 'PIL/.dylibs/liblzma.5.dylib': bytearray(b"\tr<\xfe\xc5}\xdfC_\xb8'%\xb8\xfbA%"
+                                          b'\x90I\xb1#'),
+ 'PIL/.dylibs/libopenjp2.2.5.4.dylib': bytearray(b'\x96-\xaf\xa2NG\xd6\x04'
+                                                 b'<"\xc5\xa4\xb7\xf0Jk'
+                                                 b'>\xb7#\x17'),
+ 'PIL/.dylibs/libpng16.16.dylib': bytearray(b'W\xd4D\r$\xed6\x98\xe3W\xb5\xe3'
+                                            b'D\xa7M\xdd\xf6v\xe0S'),
+ 'PIL/.dylibs/libsharpyuv.0.dylib': bytearray(b's\xe3\x91Y+\xcf3L|U\xbd\xd5'
+                                              b'\x1e\xd1\xb6h\xd1\xb2N\x1f'),
+ 'PIL/.dylibs/libtiff.6.dylib': bytearray(b'\x9bz\xeccjFSF\x06s\xccnLL\x1d-'
+                                          b'\x1c\xcf%\xdb'),
+ 'PIL/.dylibs/libwebp.7.dylib': bytearray(b'@/\xbdY\xebd\x86\x072\x15\xfdn'
+                                          b'\xec\x17\x0c\xf6C)\x004'),
+ 'PIL/.dylibs/libwebpdemux.2.dylib': bytearray(b'V\tT\xe0p$\xfd\x9d'
+                                               b"\xc9\xb3k\x13\xc9)\x05'"
+                                               b'\x87\xd3%\x0e'),
+ 'PIL/.dylibs/libwebpmux.3.dylib': bytearray(b'L\x9d\xbf\xf6||J\xa7'
+                                             b'\xfb\xb9\x16\x06\xc2\x8a\xb5\xe9'
+                                             b'q\x84\x04\x1c'),
+ 'PIL/.dylibs/libxcb.1.1.0.dylib': bytearray(b'\xb0\xe3nO\xd1\x18dN'
+                                             b'\xd4\xa4\xee\xb0\xb8\x9c(\x15'
+                                             b'bM\xed\xf4'),
+ 'PIL/.dylibs/libz.1.3.1.zlib-ng.dylib': bytearray(b"|lC\xb9{\xbdE'"
+                                                   b'!\xa6\x8a\x90o\x90\xfb\xeb'
+                                                   b'KxG<'),
+ 'PIL/__dot__dylibs/libXau.6.dylib': bytearray(b'\xeeI\x17\x98\xba\x93\xd4\xfd'
+                                               b'\xb52\xa1\xc2\xd3\xbe\xf3\xbe'
+                                               b'762!'),
+ 'PIL/__dot__dylibs/libavif.16.4.1.dylib': bytearray(b'f\xc1\x93a5\x07\x84\xad'
+                                                     b'\xbfnm\xf3uQ\x1f\x00'
+                                                     b'\\1\x90#'),
+ 'PIL/__dot__dylibs/libbrotlicommon.1.2.0.dylib': bytearray(b'\xf6\xbcG\x0b'
+                                                            b'\xb5\xb5\xa6\x15'
+                                                            b'\xd0x\x17\x93'
+                                                            b'\xb6\xed\xd9\xc4'
+                                                            b'D\xf6}\x98'),
+ 'PIL/__dot__dylibs/libbrotlidec.1.2.0.dylib': bytearray(b'\xcc\x8e\xa8\xa9'
+                                                         b'|\x07\x9c\x9c'
+                                                         b'\xd4|\xc9\xc5'
+                                                         b'\x9a~\x13\xcf'
+                                                         b'\xbd\xfd\xdb>'),
+ 'PIL/__dot__dylibs/libfreetype.6.dylib': bytearray(b'o\xf9r\xba\x80qR\x97'
+                                                    b'\xfe\t?\x81\xf6/\xff\xb7'
+                                                    b'2\xe8\xee\x1b'),
+ 'PIL/__dot__dylibs/libharfbuzz.0.dylib': bytearray(b'\nPU\t\xff\xbc\x0f\x92'
+                                                    b'p\x8b\xdc\x1dt\\\x90\xd6'
+                                                    b'u,G\x06'),
+ 'PIL/__dot__dylibs/libjpeg.62.4.0.dylib': bytearray(b'\xb9\x07M\xa9M\xf2HM)`hL'
+                                                     b'\xf3)1*d\x94\x04\x10'),
+ 'PIL/__dot__dylibs/liblcms2.2.dylib': bytearray(b'2=@!\xb1\x82\x95\xa6'
+                                                 b'\xfby\xba\xed)\\\x8dK'
+                                                 b'N\x13\xd7\r'),
+ 'PIL/__dot__dylibs/liblzma.5.dylib': bytearray(b"\tr<\xfe\xc5}\xdfC_\xb8'%"
+                                                b'\xb8\xfbA%\x90I\xb1#'),
+ 'PIL/__dot__dylibs/libopenjp2.2.5.4.dylib': bytearray(b'\x96-\xaf\xa2'
+                                                       b'NG\xd6\x04<"\xc5\xa4'
+                                                       b'\xb7\xf0Jk>\xb7#\x17'),
+ 'PIL/__dot__dylibs/libpng16.16.dylib': bytearray(b'W\xd4D\r$\xed6\x98'
+                                                  b'\xe3W\xb5\xe3D\xa7M\xdd'
+                                                  b'\xf6v\xe0S'),
+ 'PIL/__dot__dylibs/libsharpyuv.0.dylib': bytearray(b's\xe3\x91Y+\xcf3L'
+                                                    b'|U\xbd\xd5\x1e\xd1\xb6h'
+                                                    b'\xd1\xb2N\x1f'),
+ 'PIL/__dot__dylibs/libtiff.6.dylib': bytearray(b'\x9bz\xeccjFSF\x06s\xccn'
+                                                b'LL\x1d-\x1c\xcf%\xdb'),
+ 'PIL/__dot__dylibs/libwebp.7.dylib': bytearray(b'@/\xbdY\xebd\x86\x07'
+                                                b'2\x15\xfdn\xec\x17\x0c\xf6'
+                                                b'C)\x004'),
+ 'PIL/__dot__dylibs/libwebpdemux.2.dylib': bytearray(b'V\tT\xe0p$\xfd\x9d'
+                                                     b"\xc9\xb3k\x13\xc9)\x05'"
+                                                     b'\x87\xd3%\x0e'),
+ 'PIL/__dot__dylibs/libwebpmux.3.dylib': bytearray(b'L\x9d\xbf\xf6||J\xa7'
+                                                   b'\xfb\xb9\x16\x06'
+                                                   b'\xc2\x8a\xb5\xe9'
+                                                   b'q\x84\x04\x1c'),
+ 'PIL/__dot__dylibs/libxcb.1.1.0.dylib': bytearray(b'\xb0\xe3nO\xd1\x18dN'
+                                                   b'\xd4\xa4\xee\xb0'
+                                                   b'\xb8\x9c(\x15bM\xed\xf4'),
+ 'PIL/__dot__dylibs/libz.1.3.1.zlib-ng.dylib': bytearray(b"|lC\xb9{\xbdE'"
+                                                         b'!\xa6\x8a\x90'
+                                                         b'o\x90\xfb\xebKxG<'),
+ 'PIL/_avif.cpython-310-darwin.so': bytearray(b'?\xaf\x9e\xdb\xd7J\\*f\nq3;+=f'
+                                              b'\x00#_\xee'),
+ 'PIL/_imaging.cpython-310-darwin.so': bytearray(b'<\xb4NYk\xd1,\xbc\xebg\xdbm'
+                                                 b']_\xea\xbaIP\xe4\x84'),
+ 'PIL/_imagingcms.cpython-310-darwin.so': bytearray(b'%K\x1b^q*\x88J\x90J\x0bN'
+                                                    b'(LH6\x90\xa8\xd0]'),
+ 'PIL/_imagingft.cpython-310-darwin.so': bytearray(b'B\xd6\xfcWFb"G\x8a\xf58\''
+                                                   b'\xbaV|E\xf66\xf5\xed'),
+ 'PIL/_imagingmath.cpython-310-darwin.so': bytearray(b'\xb0\xbb\xd0!'
+                                                     b'\xcbw\xb3\x1b'
+                                                     b'\xa2,\x19\xe1Q4\xa8\xfb'
+                                                     b'X]\xc7\xc7'),
+ 'PIL/_imagingmorph.cpython-310-darwin.so': bytearray(b'$\x00\xa9j'
+                                                      b'\xf8\x90\xfb\x9f'
+                                                      b'\x7f\x81X\x8dp\xf9]\x08'
+                                                      b'\xd4pFi'),
+ 'PIL/_imagingtk.cpython-310-darwin.so': bytearray(b'\xf6\xe1\x01HO\xe63\x00'
+                                                   b':\x1fW?\x87i\xcew'
+                                                   b'\x96\xafa\xb6'),
+ 'PIL/_webp.cpython-310-darwin.so': bytearray(b'c\xe2\x84\x00)[+\xd2'
+                                              b')\x8b\x90\xfd`\x82k\x01'
+                                              b'4\x9e\xdc\xb1'),
+ 'cv2/.dylibs/libSDL2-2.0.0.dylib': bytearray(b'\xfcZ\xd8\x15\x06\xa7\xf7\xaa'
+                                              b'\x8e\xa5\x8a\xa1\x9c~,\xca'
+                                              b'm\xb1E\xed'),
+ 'cv2/.dylibs/libSvtAv1Enc.3.0.2.dylib': bytearray(b'w5 \x84Hb\xbe\xe9'
+                                                   b'i\x19p\xae\xb829\xea'
+                                                   b'i\xec\x87\x0f'),
+ 'cv2/.dylibs/libX11.6.dylib': bytearray(b'\xa0\x03I\xcbr8\x84\x11\xab\xe7J5'
+                                         b'\xbe,\xec\x98\x1a\xc38\xa5'),
+ 'cv2/.dylibs/libXau.6.dylib': bytearray(b'\x1a\xc7Z\xf5\xf3\xc5d\xea'
+                                         b"\xb4\xd1Z\xc0\x8d'\xf4\xb7"
+                                         b'\x87\xfcZ\xa5'),
+ 'cv2/.dylibs/libXdmcp.6.dylib': bytearray(b'WG\x9d\xefa=r\x1bGop\x83pPV<'
+                                           b'\xed\xf4\x96d'),
+ 'cv2/.dylibs/libaom.3.12.1.dylib': bytearray(b'\xa7\xef\x80\x16\xb9\x85\xfe6'
+                                              b'\x00\xa8&\xec\xa0;\x9e\x1d'
+                                              b'\xda\x9b\x0bD'),
+ 'cv2/.dylibs/libarchive.13.dylib': bytearray(b'\xa2\xf5\x95f^\xba\xf1\xee'
+                                              b'\x10\xbb\x10\xd3\xaf\xdf\x148'
+                                              b'm\x04\x81\x85'),
+ 'cv2/.dylibs/libaribb24.0.dylib': bytearray(b'\xd1\xe6\xe9)\x0b5\xe0\x08'
+                                             b'\xb8\x0e|\xda\xa6\xc8\x15\x00'
+                                             b'\xbc\x15m\xce'),
+ 'cv2/.dylibs/libass.9.dylib': bytearray(b'\xda\x1c\xdd\x0f\x90[\xfca'
+                                         b'y\x12\xd0\xc5\x94\xdc\xf4\xcb'
+                                         b'7\xd9\x88\x0f'),
+ 'cv2/.dylibs/libavcodec.61.19.101.dylib': bytearray(b'\xbd\xc6\xc5?!!8D'
+                                                     b'\xa2c\xda\x9b'
+                                                     b'\xef\xea\x84.f\x866\xf2'),
+ 'cv2/.dylibs/libavdevice.61.3.100.dylib': bytearray(b'\xd1\x12^M\xfa\xaa\xe3*'
+                                                     b'\xb2l\xcc\x1d\x1a)z\xfa'
+                                                     b'=S\xdcQ'),
+ 'cv2/.dylibs/libavfilter.10.4.100.dylib': bytearray(b'\xee\x8b\xe7g'
+                                                     b'\x8f\xcb\xd9_S@\xb0\xfe'
+                                                     b'2\x88\x19h'
+                                                     b'\xd6\xd3\xba\x94'),
+ 'cv2/.dylibs/libavformat.61.7.100.dylib': bytearray(b'\xb8\x82(\x1a\xd9R\xc1Q'
+                                                     b']\xca6M\xebNC>'
+                                                     b'\x9c\xbe\xea@'),
+ 'cv2/.dylibs/libavif.16.3.0.dylib': bytearray(b'hl\xa0\xd8\x90\xccP\xde'
+                                               b'\xd7\x16\xdd+\xf3\x1c>\xdd'
+                                               b'\x83MD7'),
+ 'cv2/.dylibs/libavutil.59.39.100.dylib': bytearray(b'\xfa-\x18\x9b'
+                                                    b'\x04\xceA\xa4'
+                                                    b'I\x87\x9d\x01'
+                                                    b'\x00\x06\xb2\xa2'
+                                                    b'\xb4\x9e\xe2\xcc'),
+ 'cv2/.dylibs/libb2.1.dylib': bytearray(b'\xa0&\xb8CpN\xb4\xfe\xd3\xd4\xcd\xc0'
+                                        b'\xe4\xf8}\xce=\xacj\x1c'),
+ 'cv2/.dylibs/libbluray.2.dylib': bytearray(b'T\x98no\x9e\xb8\xd5M\t\x96\xb4b'
+                                            b'd\xe8\x83v\xea\x06\x7fV'),
+ 'cv2/.dylibs/libbrotlicommon.1.1.0.dylib': bytearray(b'\xb4\xf0\x94\xba'
+                                                      b'@\xc11\xfc_ri\x10'
+                                                      b'\x06mJ\xdf'
+                                                      b'\xa2\xd3\x05\xa4'),
+ 'cv2/.dylibs/libbrotlidec.1.1.0.dylib': bytearray(b'\t\xc3\x1a\x93'
+                                                   b'\x84m\xea\xeb7\xf3@\x90'
+                                                   b'E.\xbf\x1a2}(\xdb'),
+ 'cv2/.dylibs/libbrotlienc.1.1.0.dylib': bytearray(b'\x9e\xfa1\x06\x85(\xc0O'
+                                                   b'w\xed\x1d5M\xd27\xa9'
+                                                   b'j\xfc\xb0\xf2'),
+ 'cv2/.dylibs/libcjson.1.7.18.dylib': bytearray(b'T\n\x9a\x12\n\xeb9\xcf'
+                                                b'\xe3\xb9s\xa9\xcb\xa8c\xfa'
+                                                b'\xda\xf8\xab\x06'),
+ 'cv2/.dylibs/libcrypto.3.dylib': bytearray(b'\xac\x85J*\xa8\xa2Fz\xc8{1\xdb'
+                                            b'\xab\xf6\x19\xf4\xb8\xb0b\xe1'),
+ 'cv2/.dylibs/libdav1d.7.dylib': bytearray(b'j{\xa5\xc6\xa2\x95u;0Pn\x86'
+                                           b'\\\xdf\x94\x9b+\x9d\xdc"'),
+ 'cv2/.dylibs/libfontconfig.1.dylib': bytearray(b'\x06mxd\xff&a\x95\x18^Ei'
+                                                b'\xb9\xe7\xcc\xd9\xbaN\x15s'),
+ 'cv2/.dylibs/libfreetype.6.dylib': bytearray(b'\xde\x1bA\xab\x19:\x82p'
+                                              b'9\xbf\xc2T}\n\xa1\x9e'
+                                              b'\xad\xb5\xfc\x9c'),
+ 'cv2/.dylibs/libfribidi.0.dylib': bytearray(b'\x15Z\x97\x84rr\x8e\xbcJ}84'
+                                             b'\xbc\xb1\xab\xf8\x88^ \xef'),
+ 'cv2/.dylibs/libgif.7.2.0.dylib': bytearray(b'\xf2S\xe9u\xb2\xcf\xb2W'
+                                             b'\xfe\x01\xab\xd9L\x9b\xa7\x14'
+                                             b'\xf8k\xd6?'),
+ 'cv2/.dylibs/libglib-2.0.0.dylib': bytearray(b'\xa5A\xeb\x03\xc5\xd9\xae\xe7'
+                                              b'\x1e\x18\x8c\x00A\t\x94\xbf'
+                                              b'Z\x95\xcc\x84'),
+ 'cv2/.dylibs/libgmp.10.dylib': bytearray(b'B\xbf\x8c\xce\xd8\xcb\x1c4'
+                                          b'\xc8V\x82gH\x16\xcc6'
+                                          b'\xc8\xb0\x07\xac'),
+ 'cv2/.dylibs/libgnutls.30.dylib': bytearray(b'\x98\xa53b\xf9\x00f\x96'
+                                             b'\xe0\xf7o\xcc\xcd\\\x1cJ'
+                                             b'\xa2j\xa8\x1a'),
+ 'cv2/.dylibs/libgraphite2.3.2.1.dylib': bytearray(b'\x9aD`\xbd(:\xdf\x97'
+                                                   b'}pl\xd9\x1f\x0e\r\xa2'
+                                                   b'+*\x19\xbd'),
+ 'cv2/.dylibs/libharfbuzz.0.dylib': bytearray(b'\xc8\n\\q\xf7\x91\x0e~'
+                                              b'\xc25\xc8bW0\x0b\xd6\xfaF|\xb4'),
+ 'cv2/.dylibs/libhogweed.6.10.dylib': bytearray(b'l\xea2\xf6\xbb\xb2\x84\xf7'
+                                                b'\xf0\xe6Q\xe39\x821\x82'
+                                                b'\xf4\xb8{\x80'),
+ 'cv2/.dylibs/libhwy.1.2.0.dylib': bytearray(b'\xc7\xe6o$\x02\x82\xdeI'
+                                             b'Q\xf0\x0b2\xba\xd5F\x10'
+                                             b'\x1e\x1b\x03\xb9'),
+ 'cv2/.dylibs/libidn2.0.dylib': bytearray(b'\x8a\xa8$\xab\xe2\x06\xec\xdf'
+                                          b'[\xc4ZC<\x05\xd4\x1f\xc6\x0c?\x00'),
+ 'cv2/.dylibs/libintl.8.dylib': bytearray(b'\xf4\xf8\xd1\x08\x85\xf5\xbc\x12'
+                                          b'\xe2\xac\x1eZ\xf1\x9eE\xce1g\xce"'),
+ 'cv2/.dylibs/libjpeg.8.3.2.dylib': bytearray(b'\xfe\xf8\x83,h\xa1\x82\xe5'
+                                              b'\xee\x0c\xe0\xf0\x16\x94\xd5y'
+                                              b'\x7f#\xbd\xd9'),
+ 'cv2/.dylibs/libjxl.0.11.1.dylib': bytearray(b'&4\x02\xd4[\xa1\xc6d'
+                                              b'\x7f\xb0\xe5!\xad\t\x99U'
+                                              b'\x85|\xcd\xaf'),
+ 'cv2/.dylibs/libjxl_cms.0.11.1.dylib': bytearray(b"\xb3'\xd2\xf9\xee\xeb\xa33"
+                                                  b'J\x9cb\xc7\x1e\x91\xda\x84'
+                                                  b'M\xcb\x1c\xa0'),
+ 'cv2/.dylibs/libjxl_threads.0.11.1.dylib': bytearray(b'}\xbf|\xe4\xdcq\xac\x8f'
+                                                      b'\x1a<+Am\x8d\xb6\xc6'
+                                                      b'\x95l\x17\xc3'),
+ 'cv2/.dylibs/liblcms2.2.dylib': bytearray(b'x#1\x80\x14-\xa7\x11g\x13G\x9a'
+                                           b'm\x04P\xc29\x8ayi'),
+ 'cv2/.dylibs/libleptonica.6.dylib': bytearray(b'\x90Y\xae#\xd2\x0b\xc7\x94'
+                                               b'\xf2\xbdx\xec\xd4C^cx\x97A\r'),
+ 'cv2/.dylibs/liblz4.1.10.0.dylib': bytearray(b'\xc7cw#!\xa4\xe3{"P\xe0\x8e'
+                                              b'P\x0cH\xc5\x88;F\xb7'),
+ 'cv2/.dylibs/liblzma.5.dylib': bytearray(b'qu:\xf1\x82\xc7J{\xdd\x0eK\xd5'
+                                          b'\xb6=\xafF\xe0 \xeb\xd0'),
+ 'cv2/.dylibs/libmbedcrypto.3.6.3.dylib': bytearray(b'\xda5\xce\xcf'
+                                                    b'\x80\xb0^\xceif3Y'
+                                                    b'\x88\xa2\xdef'
+                                                    b'\xdd\xe8\x95\x10'),
+ 'cv2/.dylibs/libmp3lame.0.dylib': bytearray(b') \xbf]\x83\xa4Rs1\x8fj\xbc'
+                                             b'\x05+\xc5B\x81\x07&\r'),
+ 'cv2/.dylibs/libnettle.8.10.dylib': bytearray(b'7HI\x9c\xdb\xd5\xbb\xe6'
+                                               b'\xda\xf6\x83\x90\xfaz\x95v'
+                                               b'\x82\x7f\xact'),
+ 'cv2/.dylibs/libogg.0.dylib': bytearray(b'~\xac!Jk\xc0[\x0f\xc5\xaf\xd1\xe0'
+                                         b'qg\xe9\x80\x80\x92\xbcZ'),
+ 'cv2/.dylibs/libopencore-amrnb.0.dylib': bytearray(b'M\xe1\x16H\xea\xa4r\xe2'
+                                                    b'g_\xc2WAW\xaf\xe6'
+                                                    b'\xafk\xbd\xf9'),
+ 'cv2/.dylibs/libopencore-amrwb.0.dylib': bytearray(b'\xe5P@\xa5$\xac\xa3\x10'
+                                                    b'\xe3\t\xec<kDe\x03T\xd8x['),
+ 'cv2/.dylibs/libopenjp2.2.5.3.dylib': bytearray(b'\xec\x1e\x88\x9d'
+                                                 b'n\xc0\xe7\xd3\x1c\x1bs&'
+                                                 b'^\xeb}!\xe8\xd7\xb8^'),
+ 'cv2/.dylibs/libopus.0.dylib': bytearray(b'\xf0\x0f\x97\xb0=\x1ch\x0c'
+                                          b'\x9a\xdf\x87FZv{\xf7"n\x05\xf0'),
+ 'cv2/.dylibs/libp11-kit.0.dylib': bytearray(b' \xb8\xect\x9d\x1c\xf1\x1d'
+                                             b'c\x958\x8bG\xcf\x8e\xf1@\xacO_'),
+ 'cv2/.dylibs/libpcre2-8.0.dylib': bytearray(b'-\x1f\xb4h\xc4\xa6\x0e\xa3'
+                                             b'@\xce\x97k\x03\xaf\x80\xd6'
+                                             b'0W\xbe\xdd'),
+ 'cv2/.dylibs/libpng16.16.dylib': bytearray(b'\x84\x7f"\x16\x80\xa9\x1d7'
+                                            b'\x89\x052\xba\xff\xc3~<9\xaa:\xc8'),
+ 'cv2/.dylibs/libpostproc.58.3.100.dylib': bytearray(b'\x98\xeb\x08\xcc'
+                                                     b'\xeda\xfb\xb4\x9aj\xa2&'
+                                                     b'\xc4\xdd\xdb65u\x13\xde'),
+ 'cv2/.dylibs/librav1e.0.8.0.dylib': bytearray(b'\x17\xd0\xcesPb\xeaG76\xd4}'
+                                               b'\xb6U\\\xb7\xc7q\x14\x19'),
+ 'cv2/.dylibs/librist.4.dylib': bytearray(b'\xe1Up\x1a\xec\xd4\xcc\xc5'
+                                          b'\xdb\xf3\xf5!K\xf0\xff\xc5'
+                                          b'\x1d\x84\xe2\x98'),
+ 'cv2/.dylibs/librubberband.3.dylib': bytearray(b' \xf1\xde\xb1\x00"u\x12'
+                                                b'\x98\xcbL9}\xe5\xe2E6O\xde.'),
+ 'cv2/.dylibs/libsamplerate.0.2.2.dylib': bytearray(b'j\xcc\x1d+(\xeb\x05\x10'
+                                                    b'f\x82ue\x1eeR '
+                                                    b'\xd5\x80y\xf5'),
+ 'cv2/.dylibs/libsharpyuv.0.1.1.dylib': bytearray(b'\x0cN4\xe8mr\xaf\xc8'
+                                                  b'\x96\x98O\xc1\xcbO7.\xd6&",'),
+ 'cv2/.dylibs/libsnappy.1.2.2.dylib': bytearray(b'\xc3\xdb[\xfbn\x06\x8af'
+                                                b'\xf3?\x02\xd0l\xdc\xe5\x8c'
+                                                b'7\xc2\xd3t'),
+ 'cv2/.dylibs/libsodium.26.dylib': bytearray(b'\xdd\xde\xe1\xef\x860}\xd7'
+                                             b'\xe0\xd5=$&\xb4\xfb\xd3'
+                                             b'\xdfQ\xddf'),
+ 'cv2/.dylibs/libsoxr.0.1.2.dylib': bytearray(b'\xe8\x12\x07\xd8\xdd1\xd3z'
+                                              b'\x84st\xf6\x05XB\xa8'
+                                              b'\xab\xecK\xcb'),
+ 'cv2/.dylibs/libspeex.1.dylib': bytearray(b'F\xc1\x9f\xaf\x81@(\xea'
+                                           b'\xa8\xf3r\xf3V\xdf\x8a\x8a'
+                                           b'\xb3\xae\xc6\xa1'),
+ 'cv2/.dylibs/libsrt.1.5.4.dylib': bytearray(b'\xc2\xbf\xa3\xa4Lv=\xfe'
+                                             b'\xcc\x96\xf7\x9ao\x03\x17\x88'
+                                             b'\xf3\xe4\xf6{'),
+ 'cv2/.dylibs/libssh.4.10.1.dylib': bytearray(b'\x83\xb1Jo\xf5\x1d\xb0\xe7'
+                                              b'\x18\x1c\xf4R\x08Z\xba\x95'
+                                              b'`\xf4\xde\x9b'),
+ 'cv2/.dylibs/libssl.3.dylib': bytearray(b'\x93\x12\xce6\xc8\xf5\xb1w'
+                                         b'\x81\xc0\xf0Y\x99\x1ej\x8b'
+                                         b'\xb7\\\xb7('),
+ 'cv2/.dylibs/libswresample.5.3.100.dylib': bytearray(b'C\x1b\xc5\xc8'
+                                                      b'\xe3\t\xc1\xc7^?\xb91'
+                                                      b'\xb3\x06\x14p'
+                                                      b'\t\x970\xc4'),
+ 'cv2/.dylibs/libswscale.8.3.100.dylib': bytearray(b'S\xb0]\x012\x93\x9e\x0e'
+                                                   b'u\x9f\x82c\xadR\xd2\x13'
+                                                   b'J,Hq'),
+ 'cv2/.dylibs/libtasn1.6.dylib': bytearray(b'\xffp\xc9HwUF\xcd\xceE\xa7fh\xd5pV'
+                                           b'\xcfJ+\xec'),
+ 'cv2/.dylibs/libtesseract.5.dylib': bytearray(b'v\xa2\xc3\\\xa1S\x86.'
+                                               b'\xe9PI\x881,\xc6\xcf!\x02\x8cy'),
+ 'cv2/.dylibs/libtheoradec.1.dylib': bytearray(b'8\x0eUOii\xd4\xc5\xe9-\x12\x17'
+                                               b'\xf1\x10\x81\x83\xeaV\xd3\xdc'),
+ 'cv2/.dylibs/libtheoraenc.1.dylib': bytearray(b'\xad4\x86\x8b\x83\x06\x05\xa4'
+                                               b'7,\xb53\xd6\xd6\xdc\x93'
+                                               b'@D\x9b\x01'),
+ 'cv2/.dylibs/libtiff.6.dylib': bytearray(b'\xfc\x05 \xc2\xe6\xd4I\x1f'
+                                          b'\x9e\xa4e!\xae\x11\x9aMy\xb1||'),
+ 'cv2/.dylibs/libunibreak.6.dylib': bytearray(b'A\x1aBS\\\x02x\x85;\xdbqV'
+                                              b'\x14\x07XC\x8e\x9e\x8eU'),
+ 'cv2/.dylibs/libunistring.5.dylib': bytearray(b'\x81\x99\x92z\x8fD\xe8\xe0'
+                                               b'q/\x85\xb92.B\xc6v\x90\xb1\xbb'),
+ 'cv2/.dylibs/libvidstab.1.2.dylib': bytearray(b'\x1c\xfe[\xed\x105r\r'
+                                               b'\x8c\xc1\x90C\xc2\xbd3\xe9'
+                                               b'\x1dj\xefw'),
+ 'cv2/.dylibs/libvmaf.3.dylib': bytearray(b'\x99\xa5z5\xab\xc7\x13P"\x9b[k'
+                                          b'R\xc6W\n\x81\x10F\xb6'),
+ 'cv2/.dylibs/libvorbis.0.dylib': bytearray(b'\xafI%"\x148\xe1\xe5^.\xc9\xfe'
+                                            b'mm\x11\xeb\x00u7<'),
+ 'cv2/.dylibs/libvorbisenc.2.dylib': bytearray(b"'\x9b>\x10\xb1\xf3OR"
+                                               b'\t\x0c\xda7\x1aZ\xc3\xb4'
+                                               b'l\xe5-\xab'),
+ 'cv2/.dylibs/libvpx.11.dylib': bytearray(b'\xfe\x8bW\xd1\xe4uJ\xfbFQ\x99f'
+                                          b'P\x16\xe9.\x1b\x12\xec\xce'),
+ 'cv2/.dylibs/libwebp.7.1.10.dylib': bytearray(b'%\x9fBbW\xd5z\xf8q\x1f\xab\xb8'
+                                               b':X\xfc\xee\x9eo\x00\xe4'),
+ 'cv2/.dylibs/libwebpmux.3.1.1.dylib': bytearray(b'y\x19\xfd\x93\xfb}iCXqF2'
+                                                 b'\xd7\xf4\xe9\xbd'
+                                                 b'\x9c\x85\xf8d'),
+ 'cv2/.dylibs/libx264.164.dylib': bytearray(b'\xfa\xc4\xf5\x99\xf9\xae9\xd4'
+                                            b'\x97_{\xdc\x12\xfdD\x96'
+                                            b'\x0cW\x1c\xd0'),
+ 'cv2/.dylibs/libx265.215.dylib': bytearray(b'\x95\xe3\xaa\xec\x82\xd1=E'
+                                            b'\xbe\x1fl\xa7\xcePz5\x8eh\xfc\xfe'),
+ 'cv2/.dylibs/libxcb-shape.0.0.0.dylib': bytearray(b'\x19r"81@M\xaa'
+                                                   b'\xad~\xa7\xcc'
+                                                   b'\n\x1f\x80\xe4\\e@S'),
+ 'cv2/.dylibs/libxcb-shm.0.0.0.dylib': bytearray(b'\xb2\xbc\xa3bq\xa7\x05\x81'
+                                                 b'\xfa\xdd\xb4Q'
+                                                 b'\xf2\x0e\x05\x16{\x9eT\xc1'),
+ 'cv2/.dylibs/libxcb-xfixes.0.0.0.dylib': bytearray(b'\x87\x18\x9b\x9d!R=\x1c'
+                                                    b'\x0bSV\xf8'
+                                                    b'\x11\x83\xd4\x87J`M\x13'),
+ 'cv2/.dylibs/libxcb.1.1.0.dylib': bytearray(b'\x99.\xb6\xa8#\x82\xf4\xad'
+                                             b'\xb0\xb4\xbe\t\x8c-,\x0b'
+                                             b'\xd5\x9f\x19\xe7'),
+ 'cv2/.dylibs/libzimg.2.dylib': bytearray(b'i\n\x8d\xc5\x9c\xd3\xd9\x17'
+                                          b'w\x94\xee\xeb\xcbY0K'
+                                          b'\xb8\x1c\xc9\x18'),
+ 'cv2/.dylibs/libzmq.5.dylib': bytearray(b'd\xdd\xf1\x00v\xd6\xaa\r\xf7P\x84A'
+                                         b'd\x1f4\xea\xfet\xad\x9b'),
+ 'cv2/.dylibs/libzstd.1.5.7.dylib': bytearray(b'B\t\xe6\x90\x07\xe2\x96\xdf'
+                                              b'y\x15\xbd\xca\xa0\xcdG\xa8'
+                                              b'\xaf\xf3\x0cM'),
+ 'cv2/__dot__dylibs/libSDL2-2.0.0.dylib': bytearray(b'\xfcZ\xd8\x15'
+                                                    b'\x06\xa7\xf7\xaa'
+                                                    b'\x8e\xa5\x8a\xa1'
+                                                    b'\x9c~,\xcam\xb1E\xed'),
+ 'cv2/__dot__dylibs/libSvtAv1Enc.3.0.2.dylib': bytearray(b'w5 \x84Hb\xbe\xe9'
+                                                         b'i\x19p\xae\xb829\xea'
+                                                         b'i\xec\x87\x0f'),
+ 'cv2/__dot__dylibs/libX11.6.dylib': bytearray(b'\xa0\x03I\xcbr8\x84\x11'
+                                               b'\xab\xe7J5\xbe,\xec\x98'
+                                               b'\x1a\xc38\xa5'),
+ 'cv2/__dot__dylibs/libXau.6.dylib': bytearray(b'\x1a\xc7Z\xf5\xf3\xc5d\xea'
+                                               b"\xb4\xd1Z\xc0\x8d'\xf4\xb7"
+                                               b'\x87\xfcZ\xa5'),
+ 'cv2/__dot__dylibs/libXdmcp.6.dylib': bytearray(b'WG\x9d\xefa=r\x1bGop\x83pPV<'
+                                                 b'\xed\xf4\x96d'),
+ 'cv2/__dot__dylibs/libaom.3.12.1.dylib': bytearray(b'\xa7\xef\x80\x16'
+                                                    b'\xb9\x85\xfe6'
+                                                    b'\x00\xa8&\xec'
+                                                    b'\xa0;\x9e\x1d'
+                                                    b'\xda\x9b\x0bD'),
+ 'cv2/__dot__dylibs/libarchive.13.dylib': bytearray(b'\xa2\xf5\x95f'
+                                                    b'^\xba\xf1\xee'
+                                                    b'\x10\xbb\x10\xd3'
+                                                    b'\xaf\xdf\x148'
+                                                    b'm\x04\x81\x85'),
+ 'cv2/__dot__dylibs/libaribb24.0.dylib': bytearray(b'\xd1\xe6\xe9)\x0b5\xe0\x08'
+                                                   b'\xb8\x0e|\xda'
+                                                   b'\xa6\xc8\x15\x00'
+                                                   b'\xbc\x15m\xce'),
+ 'cv2/__dot__dylibs/libass.9.dylib': bytearray(b'\xda\x1c\xdd\x0f\x90[\xfca'
+                                               b'y\x12\xd0\xc5\x94\xdc\xf4\xcb'
+                                               b'7\xd9\x88\x0f'),
+ 'cv2/__dot__dylibs/libavcodec.61.19.101.dylib': bytearray(b'\xbd\xc6\xc5?!!8D'
+                                                           b'\xa2c\xda\x9b'
+                                                           b'\xef\xea\x84.'
+                                                           b'f\x866\xf2'),
+ 'cv2/__dot__dylibs/libavdevice.61.3.100.dylib': bytearray(b'\xd1\x12^M'
+                                                           b'\xfa\xaa\xe3*'
+                                                           b'\xb2l\xcc\x1d'
+                                                           b'\x1a)z\xfa=S\xdcQ'),
+ 'cv2/__dot__dylibs/libavfilter.10.4.100.dylib': bytearray(b'\xee\x8b\xe7g'
+                                                           b'\x8f\xcb\xd9_'
+                                                           b'S@\xb0\xfe'
+                                                           b'2\x88\x19h'
+                                                           b'\xd6\xd3\xba\x94'),
+ 'cv2/__dot__dylibs/libavformat.61.7.100.dylib': bytearray(b'\xb8\x82(\x1a'
+                                                           b'\xd9R\xc1Q]\xca6M'
+                                                           b'\xebNC>'
+                                                           b'\x9c\xbe\xea@'),
+ 'cv2/__dot__dylibs/libavif.16.3.0.dylib': bytearray(b'hl\xa0\xd8\x90\xccP\xde'
+                                                     b'\xd7\x16\xdd+'
+                                                     b'\xf3\x1c>\xdd\x83MD7'),
+ 'cv2/__dot__dylibs/libavutil.59.39.100.dylib': bytearray(b'\xfa-\x18\x9b'
+                                                          b'\x04\xceA\xa4'
+                                                          b'I\x87\x9d\x01'
+                                                          b'\x00\x06\xb2\xa2'
+                                                          b'\xb4\x9e\xe2\xcc'),
+ 'cv2/__dot__dylibs/libb2.1.dylib': bytearray(b'\xa0&\xb8CpN\xb4\xfe'
+                                              b'\xd3\xd4\xcd\xc0\xe4\xf8}\xce'
+                                              b'=\xacj\x1c'),
+ 'cv2/__dot__dylibs/libbluray.2.dylib': bytearray(b'T\x98no\x9e\xb8\xd5M'
+                                                  b'\t\x96\xb4bd\xe8\x83v'
+                                                  b'\xea\x06\x7fV'),
+ 'cv2/__dot__dylibs/libbrotlicommon.1.1.0.dylib': bytearray(b'\xb4\xf0\x94\xba'
+                                                            b'@\xc11\xfc_ri\x10'
+                                                            b'\x06mJ\xdf'
+                                                            b'\xa2\xd3\x05\xa4'),
+ 'cv2/__dot__dylibs/libbrotlidec.1.1.0.dylib': bytearray(b'\t\xc3\x1a\x93'
+                                                         b'\x84m\xea\xeb'
+                                                         b'7\xf3@\x90E.\xbf\x1a'
+                                                         b'2}(\xdb'),
+ 'cv2/__dot__dylibs/libbrotlienc.1.1.0.dylib': bytearray(b'\x9e\xfa1\x06'
+                                                         b'\x85(\xc0Ow\xed\x1d5'
+                                                         b'M\xd27\xa9'
+                                                         b'j\xfc\xb0\xf2'),
+ 'cv2/__dot__dylibs/libcjson.1.7.18.dylib': bytearray(b'T\n\x9a\x12\n\xeb9\xcf'
+                                                      b'\xe3\xb9s\xa9'
+                                                      b'\xcb\xa8c\xfa'
+                                                      b'\xda\xf8\xab\x06'),
+ 'cv2/__dot__dylibs/libcrypto.3.dylib': bytearray(b'\xac\x85J*\xa8\xa2Fz'
+                                                  b'\xc8{1\xdb\xab\xf6\x19\xf4'
+                                                  b'\xb8\xb0b\xe1'),
+ 'cv2/__dot__dylibs/libdav1d.7.dylib': bytearray(b'j{\xa5\xc6\xa2\x95u;0Pn\x86'
+                                                 b'\\\xdf\x94\x9b+\x9d\xdc"'),
+ 'cv2/__dot__dylibs/libfontconfig.1.dylib': bytearray(b'\x06mxd\xff&a\x95'
+                                                      b'\x18^Ei\xb9\xe7\xcc\xd9'
+                                                      b'\xbaN\x15s'),
+ 'cv2/__dot__dylibs/libfreetype.6.dylib': bytearray(b'\xde\x1bA\xab\x19:\x82p'
+                                                    b'9\xbf\xc2T}\n\xa1\x9e'
+                                                    b'\xad\xb5\xfc\x9c'),
+ 'cv2/__dot__dylibs/libfribidi.0.dylib': bytearray(b'\x15Z\x97\x84rr\x8e\xbc'
+                                                   b'J}84\xbc\xb1\xab\xf8'
+                                                   b'\x88^ \xef'),
+ 'cv2/__dot__dylibs/libgif.7.2.0.dylib': bytearray(b'\xf2S\xe9u\xb2\xcf\xb2W'
+                                                   b'\xfe\x01\xab\xd9'
+                                                   b'L\x9b\xa7\x14\xf8k\xd6?'),
+ 'cv2/__dot__dylibs/libglib-2.0.0.dylib': bytearray(b'\xa5A\xeb\x03'
+                                                    b'\xc5\xd9\xae\xe7'
+                                                    b'\x1e\x18\x8c\x00'
+                                                    b'A\t\x94\xbfZ\x95\xcc\x84'),
+ 'cv2/__dot__dylibs/libgmp.10.dylib': bytearray(b'B\xbf\x8c\xce\xd8\xcb\x1c4'
+                                                b'\xc8V\x82gH\x16\xcc6'
+                                                b'\xc8\xb0\x07\xac'),
+ 'cv2/__dot__dylibs/libgnutls.30.dylib': bytearray(b'\x98\xa53b\xf9\x00f\x96'
+                                                   b'\xe0\xf7o\xcc\xcd\\\x1cJ'
+                                                   b'\xa2j\xa8\x1a'),
+ 'cv2/__dot__dylibs/libgraphite2.3.2.1.dylib': bytearray(b'\x9aD`\xbd(:\xdf\x97'
+                                                         b'}pl\xd9'
+                                                         b'\x1f\x0e\r\xa2'
+                                                         b'+*\x19\xbd'),
+ 'cv2/__dot__dylibs/libharfbuzz.0.dylib': bytearray(b'\xc8\n\\q\xf7\x91\x0e~'
+                                                    b'\xc25\xc8bW0\x0b\xd6'
+                                                    b'\xfaF|\xb4'),
+ 'cv2/__dot__dylibs/libhogweed.6.10.dylib': bytearray(b'l\xea2\xf6'
+                                                      b'\xbb\xb2\x84\xf7'
+                                                      b'\xf0\xe6Q\xe39\x821\x82'
+                                                      b'\xf4\xb8{\x80'),
+ 'cv2/__dot__dylibs/libhwy.1.2.0.dylib': bytearray(b'\xc7\xe6o$\x02\x82\xdeI'
+                                                   b'Q\xf0\x0b2\xba\xd5F\x10'
+                                                   b'\x1e\x1b\x03\xb9'),
+ 'cv2/__dot__dylibs/libidn2.0.dylib': bytearray(b'\x8a\xa8$\xab\xe2\x06\xec\xdf'
+                                                b'[\xc4ZC<\x05\xd4\x1f'
+                                                b'\xc6\x0c?\x00'),
+ 'cv2/__dot__dylibs/libintl.8.dylib': bytearray(b'\xf4\xf8\xd1\x08'
+                                                b'\x85\xf5\xbc\x12\xe2\xac\x1eZ'
+                                                b'\xf1\x9eE\xce1g\xce"'),
+ 'cv2/__dot__dylibs/libjpeg.8.3.2.dylib': bytearray(b'\xfe\xf8\x83,'
+                                                    b'h\xa1\x82\xe5'
+                                                    b'\xee\x0c\xe0\xf0'
+                                                    b'\x16\x94\xd5y'
+                                                    b'\x7f#\xbd\xd9'),
+ 'cv2/__dot__dylibs/libjxl.0.11.1.dylib': bytearray(b'&4\x02\xd4[\xa1\xc6d'
+                                                    b'\x7f\xb0\xe5!\xad\t\x99U'
+                                                    b'\x85|\xcd\xaf'),
+ 'cv2/__dot__dylibs/libjxl_cms.0.11.1.dylib': bytearray(b"\xb3'\xd2\xf9"
+                                                        b'\xee\xeb\xa33'
+                                                        b'J\x9cb\xc7'
+                                                        b'\x1e\x91\xda\x84'
+                                                        b'M\xcb\x1c\xa0'),
+ 'cv2/__dot__dylibs/libjxl_threads.0.11.1.dylib': bytearray(b'}\xbf|\xe4'
+                                                            b'\xdcq\xac\x8f'
+                                                            b'\x1a<+A'
+                                                            b'm\x8d\xb6\xc6'
+                                                            b'\x95l\x17\xc3'),
+ 'cv2/__dot__dylibs/liblcms2.2.dylib': bytearray(b'x#1\x80\x14-\xa7\x11'
+                                                 b'g\x13G\x9am\x04P\xc29\x8ayi'),
+ 'cv2/__dot__dylibs/libleptonica.6.dylib': bytearray(b'\x90Y\xae#'
+                                                     b'\xd2\x0b\xc7\x94'
+                                                     b'\xf2\xbdx\xec\xd4C^c'
+                                                     b'x\x97A\r'),
+ 'cv2/__dot__dylibs/liblz4.1.10.0.dylib': bytearray(b'\xc7cw#!\xa4\xe3{'
+                                                    b'"P\xe0\x8eP\x0cH\xc5'
+                                                    b'\x88;F\xb7'),
+ 'cv2/__dot__dylibs/liblzma.5.dylib': bytearray(b'qu:\xf1\x82\xc7J{'
+                                                b'\xdd\x0eK\xd5\xb6=\xafF'
+                                                b'\xe0 \xeb\xd0'),
+ 'cv2/__dot__dylibs/libmbedcrypto.3.6.3.dylib': bytearray(b'\xda5\xce\xcf'
+                                                          b'\x80\xb0^\xceif3Y'
+                                                          b'\x88\xa2\xdef'
+                                                          b'\xdd\xe8\x95\x10'),
+ 'cv2/__dot__dylibs/libmp3lame.0.dylib': bytearray(b') \xbf]\x83\xa4Rs'
+                                                   b'1\x8fj\xbc\x05+\xc5B'
+                                                   b'\x81\x07&\r'),
+ 'cv2/__dot__dylibs/libnettle.8.10.dylib': bytearray(b'7HI\x9c\xdb\xd5\xbb\xe6'
+                                                     b'\xda\xf6\x83\x90'
+                                                     b'\xfaz\x95v\x82\x7f\xact'),
+ 'cv2/__dot__dylibs/libogg.0.dylib': bytearray(b'~\xac!Jk\xc0[\x0f'
+                                               b'\xc5\xaf\xd1\xe0qg\xe9\x80'
+                                               b'\x80\x92\xbcZ'),
+ 'cv2/__dot__dylibs/libopencore-amrnb.0.dylib': bytearray(b'M\xe1\x16H'
+                                                          b'\xea\xa4r\xe2'
+                                                          b'g_\xc2WAW\xaf\xe6'
+                                                          b'\xafk\xbd\xf9'),
+ 'cv2/__dot__dylibs/libopencore-amrwb.0.dylib': bytearray(b'\xe5P@\xa5'
+                                                          b'$\xac\xa3\x10'
+                                                          b'\xe3\t\xec<kDe\x03'
+                                                          b'T\xd8x['),
+ 'cv2/__dot__dylibs/libopenjp2.2.5.3.dylib': bytearray(b'\xec\x1e\x88\x9d'
+                                                       b'n\xc0\xe7\xd3'
+                                                       b'\x1c\x1bs&^\xeb}!'
+                                                       b'\xe8\xd7\xb8^'),
+ 'cv2/__dot__dylibs/libopus.0.dylib': bytearray(b'\xf0\x0f\x97\xb0=\x1ch\x0c'
+                                                b'\x9a\xdf\x87FZv{\xf7'
+                                                b'"n\x05\xf0'),
+ 'cv2/__dot__dylibs/libp11-kit.0.dylib': bytearray(b' \xb8\xect\x9d\x1c\xf1\x1d'
+                                                   b'c\x958\x8bG\xcf\x8e\xf1'
+                                                   b'@\xacO_'),
+ 'cv2/__dot__dylibs/libpcre2-8.0.dylib': bytearray(b'-\x1f\xb4h\xc4\xa6\x0e\xa3'
+                                                   b'@\xce\x97k\x03\xaf\x80\xd6'
+                                                   b'0W\xbe\xdd'),
+ 'cv2/__dot__dylibs/libpng16.16.dylib': bytearray(b'\x84\x7f"\x16\x80\xa9\x1d7'
+                                                  b'\x89\x052\xba\xff\xc3~<'
+                                                  b'9\xaa:\xc8'),
+ 'cv2/__dot__dylibs/libpostproc.58.3.100.dylib': bytearray(b'\x98\xeb\x08\xcc'
+                                                           b'\xeda\xfb\xb4'
+                                                           b'\x9aj\xa2&'
+                                                           b'\xc4\xdd\xdb6'
+                                                           b'5u\x13\xde'),
+ 'cv2/__dot__dylibs/librav1e.0.8.0.dylib': bytearray(b'\x17\xd0\xcesPb\xeaG'
+                                                     b'76\xd4}\xb6U\\\xb7'
+                                                     b'\xc7q\x14\x19'),
+ 'cv2/__dot__dylibs/librist.4.dylib': bytearray(b'\xe1Up\x1a\xec\xd4\xcc\xc5'
+                                                b'\xdb\xf3\xf5!K\xf0\xff\xc5'
+                                                b'\x1d\x84\xe2\x98'),
+ 'cv2/__dot__dylibs/librubberband.3.dylib': bytearray(b' \xf1\xde\xb1\x00"u\x12'
+                                                      b'\x98\xcbL9}\xe5\xe2E'
+                                                      b'6O\xde.'),
+ 'cv2/__dot__dylibs/libsamplerate.0.2.2.dylib': bytearray(b'j\xcc\x1d+'
+                                                          b'(\xeb\x05\x10'
+                                                          b'f\x82ue\x1eeR '
+                                                          b'\xd5\x80y\xf5'),
+ 'cv2/__dot__dylibs/libsharpyuv.0.1.1.dylib': bytearray(b'\x0cN4\xe8mr\xaf\xc8'
+                                                        b'\x96\x98O\xc1\xcbO7.'
+                                                        b'\xd6&",'),
+ 'cv2/__dot__dylibs/libsnappy.1.2.2.dylib': bytearray(b'\xc3\xdb[\xfbn\x06\x8af'
+                                                      b'\xf3?\x02\xd0'
+                                                      b'l\xdc\xe5\x8c7\xc2\xd3t'),
+ 'cv2/__dot__dylibs/libsodium.26.dylib': bytearray(b'\xdd\xde\xe1\xef\x860}\xd7'
+                                                   b'\xe0\xd5=$&\xb4\xfb\xd3'
+                                                   b'\xdfQ\xddf'),
+ 'cv2/__dot__dylibs/libsoxr.0.1.2.dylib': bytearray(b'\xe8\x12\x07\xd8'
+                                                    b'\xdd1\xd3z\x84st\xf6'
+                                                    b'\x05XB\xa8\xab\xecK\xcb'),
+ 'cv2/__dot__dylibs/libspeex.1.dylib': bytearray(b'F\xc1\x9f\xaf\x81@(\xea'
+                                                 b'\xa8\xf3r\xf3V\xdf\x8a\x8a'
+                                                 b'\xb3\xae\xc6\xa1'),
+ 'cv2/__dot__dylibs/libsrt.1.5.4.dylib': bytearray(b'\xc2\xbf\xa3\xa4Lv=\xfe'
+                                                   b'\xcc\x96\xf7\x9a'
+                                                   b'o\x03\x17\x88\xf3\xe4\xf6{'),
+ 'cv2/__dot__dylibs/libssh.4.10.1.dylib': bytearray(b'\x83\xb1Jo'
+                                                    b'\xf5\x1d\xb0\xe7'
+                                                    b'\x18\x1c\xf4R'
+                                                    b'\x08Z\xba\x95'
+                                                    b'`\xf4\xde\x9b'),
+ 'cv2/__dot__dylibs/libssl.3.dylib': bytearray(b'\x93\x12\xce6\xc8\xf5\xb1w'
+                                               b'\x81\xc0\xf0Y\x99\x1ej\x8b'
+                                               b'\xb7\\\xb7('),
+ 'cv2/__dot__dylibs/libswresample.5.3.100.dylib': bytearray(b'C\x1b\xc5\xc8'
+                                                            b'\xe3\t\xc1\xc7'
+                                                            b'^?\xb91'
+                                                            b'\xb3\x06\x14p'
+                                                            b'\t\x970\xc4'),
+ 'cv2/__dot__dylibs/libswscale.8.3.100.dylib': bytearray(b'S\xb0]\x01'
+                                                         b'2\x93\x9e\x0e'
+                                                         b'u\x9f\x82c'
+                                                         b'\xadR\xd2\x13J,Hq'),
+ 'cv2/__dot__dylibs/libtasn1.6.dylib': bytearray(b'\xffp\xc9HwUF\xcd\xceE\xa7f'
+                                                 b'h\xd5pV\xcfJ+\xec'),
+ 'cv2/__dot__dylibs/libtesseract.5.dylib': bytearray(b'v\xa2\xc3\\\xa1S\x86.'
+                                                     b'\xe9PI\x881,\xc6\xcf'
+                                                     b'!\x02\x8cy'),
+ 'cv2/__dot__dylibs/libtheoradec.1.dylib': bytearray(b'8\x0eUOii\xd4\xc5'
+                                                     b'\xe9-\x12\x17'
+                                                     b'\xf1\x10\x81\x83'
+                                                     b'\xeaV\xd3\xdc'),
+ 'cv2/__dot__dylibs/libtheoraenc.1.dylib': bytearray(b'\xad4\x86\x8b'
+                                                     b'\x83\x06\x05\xa47,\xb53'
+                                                     b'\xd6\xd6\xdc\x93'
+                                                     b'@D\x9b\x01'),
+ 'cv2/__dot__dylibs/libtiff.6.dylib': bytearray(b'\xfc\x05 \xc2\xe6\xd4I\x1f'
+                                                b'\x9e\xa4e!\xae\x11\x9aM'
+                                                b'y\xb1||'),
+ 'cv2/__dot__dylibs/libunibreak.6.dylib': bytearray(b'A\x1aBS\\\x02x\x85;\xdbqV'
+                                                    b'\x14\x07XC\x8e\x9e\x8eU'),
+ 'cv2/__dot__dylibs/libunistring.5.dylib': bytearray(b'\x81\x99\x92z'
+                                                     b'\x8fD\xe8\xe0q/\x85\xb9'
+                                                     b'2.B\xc6v\x90\xb1\xbb'),
+ 'cv2/__dot__dylibs/libvidstab.1.2.dylib': bytearray(b'\x1c\xfe[\xed\x105r\r'
+                                                     b'\x8c\xc1\x90C'
+                                                     b'\xc2\xbd3\xe9\x1dj\xefw'),
+ 'cv2/__dot__dylibs/libvmaf.3.dylib': bytearray(b'\x99\xa5z5\xab\xc7\x13P'
+                                                b'"\x9b[kR\xc6W\n\x81\x10F\xb6'),
+ 'cv2/__dot__dylibs/libvorbis.0.dylib': bytearray(b'\xafI%"\x148\xe1\xe5'
+                                                  b'^.\xc9\xfemm\x11\xeb\x00u7<'),
+ 'cv2/__dot__dylibs/libvorbisenc.2.dylib': bytearray(b"'\x9b>\x10\xb1\xf3OR"
+                                                     b'\t\x0c\xda7\x1aZ\xc3\xb4'
+                                                     b'l\xe5-\xab'),
+ 'cv2/__dot__dylibs/libvpx.11.dylib': bytearray(b'\xfe\x8bW\xd1\xe4uJ\xfb'
+                                                b'FQ\x99fP\x16\xe9.'
+                                                b'\x1b\x12\xec\xce'),
+ 'cv2/__dot__dylibs/libwebp.7.1.10.dylib': bytearray(b'%\x9fBbW\xd5z\xf8'
+                                                     b'q\x1f\xab\xb8:X\xfc\xee'
+                                                     b'\x9eo\x00\xe4'),
+ 'cv2/__dot__dylibs/libwebpmux.3.1.1.dylib': bytearray(b'y\x19\xfd\x93\xfb}iC'
+                                                       b'XqF2\xd7\xf4\xe9\xbd'
+                                                       b'\x9c\x85\xf8d'),
+ 'cv2/__dot__dylibs/libx264.164.dylib': bytearray(b'\xfa\xc4\xf5\x99'
+                                                  b'\xf9\xae9\xd4\x97_{\xdc'
+                                                  b'\x12\xfdD\x96\x0cW\x1c\xd0'),
+ 'cv2/__dot__dylibs/libx265.215.dylib': bytearray(b'\x95\xe3\xaa\xec\x82\xd1=E'
+                                                  b'\xbe\x1fl\xa7\xcePz5'
+                                                  b'\x8eh\xfc\xfe'),
+ 'cv2/__dot__dylibs/libxcb-shape.0.0.0.dylib': bytearray(b'\x19r"81@M\xaa'
+                                                         b'\xad~\xa7\xcc'
+                                                         b'\n\x1f\x80\xe4\\e@S'),
+ 'cv2/__dot__dylibs/libxcb-shm.0.0.0.dylib': bytearray(b'\xb2\xbc\xa3b'
+                                                       b'q\xa7\x05\x81'
+                                                       b'\xfa\xdd\xb4Q'
+                                                       b'\xf2\x0e\x05\x16'
+                                                       b'{\x9eT\xc1'),
+ 'cv2/__dot__dylibs/libxcb-xfixes.0.0.0.dylib': bytearray(b'\x87\x18\x9b\x9d'
+                                                          b'!R=\x1c\x0bSV\xf8'
+                                                          b'\x11\x83\xd4\x87'
+                                                          b'J`M\x13'),
+ 'cv2/__dot__dylibs/libxcb.1.1.0.dylib': bytearray(b'\x99.\xb6\xa8#\x82\xf4\xad'
+                                                   b'\xb0\xb4\xbe\t\x8c-,\x0b'
+                                                   b'\xd5\x9f\x19\xe7'),
+ 'cv2/__dot__dylibs/libzimg.2.dylib': bytearray(b'i\n\x8d\xc5\x9c\xd3\xd9\x17'
+                                                b'w\x94\xee\xeb\xcbY0K'
+                                                b'\xb8\x1c\xc9\x18'),
+ 'cv2/__dot__dylibs/libzmq.5.dylib': bytearray(b'd\xdd\xf1\x00v\xd6\xaa\r'
+                                               b'\xf7P\x84Ad\x1f4\xea'
+                                               b'\xfet\xad\x9b'),
+ 'cv2/__dot__dylibs/libzstd.1.5.7.dylib': bytearray(b'B\t\xe6\x90'
+                                                    b'\x07\xe2\x96\xdf'
+                                                    b'y\x15\xbd\xca'
+                                                    b'\xa0\xcdG\xa8'
+                                                    b'\xaf\xf3\x0cM'),
+ 'cv2/cv2.abi3.so': bytearray(b'F\x8b\xf9c\xdf\xb8\xe8Bf\x1b\x87\xe1'
+                              b'\x86\xe4\xb8\xc0\xf9\xf4\xaa\x9a'),
+ 'libbz2.dylib': bytearray(b"9kN(\' \x0bAq\x03\xdf{q\xc5\x1b:\xd5x\xe3I"),
+ 'libffi.8.dylib': bytearray(b'\x8d\xd6\xe7\x04k\x1c\x17\x1d\x7f\x086#'
+                             b'\x1c\x90\xeeo~&\x1a\xa0'),
+ 'libncurses.6.dylib': bytearray(b'\xd8\xa1~S\xbf_P\xb8\xa8\x0c4S\x93HU\t'
+                                 b'\xf2U\x87b'),
+ 'libpython3.10.dylib': bytearray(b'.A\xb9\xcb\x98Vw&wN7\x10\xed\xae[>'
+                                  b'\x0c7\xc1\xf9'),
+ 'libreadline.8.dylib': bytearray(b'gxMh\xe4R\x84\xc8\x8bm\x03\x86Xv\xbaj'
+                                  b'\xc0\x90Rz'),
+ 'libtcl8.6.dylib': bytearray(b'\xa1bzqC\x86g\xde\t\xca6u\xb5\xa1RA'
+                              b'\xcbh\x02\x0c'),
+ 'libtinfo.6.dylib': bytearray(b'7\xfbN\x84J\xd4}\xe3\xda\x1aJ\x8e\xdc\x17C\xd3'
+                               b'O\x8f\x8e\xc0'),
+ 'libtk8.6.dylib': bytearray(b'\xa8\x827E\xff:%x\xcfX\xda,Ek\x88\xfb'
+                             b'\xf3\x07\xc7Z'),
+ 'libz.1.dylib': bytearray(b'\x85\x1c\xf5-\x0c\xb3fM\xf4\xa6\x0f=\xee=\x8cm'
+                           b'\xf2\xab\x16B'),
+ 'numpy/_core/_multiarray_tests.cpython-310-darwin.so': bytearray(b'\xf2\xe4\xdbe'
+                                                                  b'\xa6-\xf1\xeb'
+                                                                  b')\r(\x94'
+                                                                  b'V\xa6\xcbs'
+                                                                  b'4\xcb\xc21'),
+ 'numpy/_core/_multiarray_umath.cpython-310-darwin.so': bytearray(b'\xb6+\xaa>'
+                                                                  b'M\x84\xa9\x95'
+                                                                  b'\xc4\x0e\xe1\xd6'
+                                                                  b'\xb1\x18\xa7\xcf'
+                                                                  b'8\x1a\x07@'),
+ 'numpy/fft/_pocketfft_umath.cpython-310-darwin.so': bytearray(b'\x8f\xe4\xb7R'
+                                                               b'\xe2\x99\xe6\xf4'
+                                                               b'\xfc\xd1\x11\xc9'
+                                                               b'\x8d\xd4c\xe4'
+                                                               b'\xb2g\x1f\x12'),
+ 'numpy/linalg/_umath_linalg.cpython-310-darwin.so': bytearray(b'\x9d_\x1b\x80'
+                                                               b'\x1bo\x1a\xa7'
+                                                               b'{1\xd8\xd1'
+                                                               b'6\xc3h7'
+                                                               b'\x1a\x14P\xa9'),
+ 'numpy/random/_bounded_integers.cpython-310-darwin.so': bytearray(b'\x88\xad\x04\x08'
+                                                                   b'\x08x\xf9D'
+                                                                   b'\xa9\x1b\x8dZ'
+                                                                   b'\xc1.\x8b\xa3'
+                                                                   b'0\x88o\xaf'),
+ 'numpy/random/_common.cpython-310-darwin.so': bytearray(b'\\\xfbS\x8a'
+                                                         b'\xd9\xce(\xd30rl\xe4'
+                                                         b'\xbclZO\xa9\xe9"\xca'),
+ 'numpy/random/_generator.cpython-310-darwin.so': bytearray(b'\xa1\x92\xc2\xc7'
+                                                            b'\xe9\x1es\x9d'
+                                                            b'{\xcd\xc8\xff'
+                                                            b'\xe1\xe9on'
+                                                            b'\xf5{\x9a~'),
+ 'numpy/random/_mt19937.cpython-310-darwin.so': bytearray(b'\xe9\xe1\xad\x8f'
+                                                          b'\xf4\x84\x91Y'
+                                                          b'\\4\x0f\xb2'
+                                                          b'\xc1\xe1%3\x06oyT'),
+ 'numpy/random/_pcg64.cpython-310-darwin.so': bytearray(b'\xfe\xbd\xe3F}k\xe8j'
+                                                        b'\xc3\x06\xc1\xb4'
+                                                        b'X\x9a\xa5\xfe'
+                                                        b'\xa6\xc8\x1c\xd8'),
+ 'numpy/random/_philox.cpython-310-darwin.so': bytearray(b'ha\xa7\xf5v\x13.\x86'
+                                                         b'\x8a\xb4\xbd\xd4'
+                                                         b'u\xd1\x96\xa9'
+                                                         b'3\xd0\x1a\xfa'),
+ 'numpy/random/_sfc64.cpython-310-darwin.so': bytearray(b'\xe7C\nf#\x17\x131'
+                                                        b'Y\xa0K\xc4'
+                                                        b'\xc9\xdd\xeb\x99'
+                                                        b'\xc4W\xe7\x11'),
+ 'numpy/random/bit_generator.cpython-310-darwin.so': bytearray(b'\xb6\xc5\xc7\xdf'
+                                                               b'\x89TR\xc6'
+                                                               b'\x96d\xe0\x00'
+                                                               b'\xc3\xa3#\x9e'
+                                                               b'z\xaa:\xff'),
+ 'numpy/random/mtrand.cpython-310-darwin.so': bytearray(b'K~\x8e\x18G2\x05\xc9'
+                                                        b'\xb8\xcb\x18g'
+                                                        b'\x04\xa1\xf9\x91'
+                                                        b'\xca&\xc6a'),
+ 'python3.10/lib-dynload/_asyncio.cpython-310-darwin.so': bytearray(b'h#\xdf\x96'
+                                                                    b'\xa2w\x00\xf1'
+                                                                    b'\xf18K6'
+                                                                    b'\xdd\x1e(\x83'
+                                                                    b'\xdc\x10\xb0;'),
+ 'python3.10/lib-dynload/_bisect.cpython-310-darwin.so': bytearray(b'\x1f\xee\xa5E'
+                                                                   b'\x7f0\xf0\xec'
+                                                                   b'\xa0\x0f$\x8d'
+                                                                   b'\xdb=\xe17'
+                                                                   b'\xe2\xdd\\\x0c'),
+ 'python3.10/lib-dynload/_blake2.cpython-310-darwin.so': bytearray(b'\xf5\xaar\xdd'
+                                                                   b'\xb4H\xe2\x02'
+                                                                   b'u}\xe8-'
+                                                                   b"'\x9e\x01\xff"
+                                                                   b'\xd5\xdc\xa6T'),
+ 'python3.10/lib-dynload/_bz2.cpython-310-darwin.so': bytearray(b'\xad\xa3\xf13'
+                                                                b'\x94\xb1\xb4L'
+                                                                b'7\xc4\xac\xac'
+                                                                b'2G\x8e\x88'
+                                                                b'X\x1cY%'),
+ 'python3.10/lib-dynload/_codecs_cn.cpython-310-darwin.so': bytearray(b'\xe8\xf3\xff,'
+                                                                      b'\x10B\xbe\xfe'
+                                                                      b'\x165vx'
+                                                                      b'v\xf6\xcd+'
+                                                                      b'\x88#\xef\xec'),
+ 'python3.10/lib-dynload/_codecs_hk.cpython-310-darwin.so': bytearray(b'F#\x87l'
+                                                                      b'g\xc4\xc3\xd8'
+                                                                      b'\x94\xf4IJ'
+                                                                      b'\xae\x94p\x0f'
+                                                                      b';\xfbK8'),
+ 'python3.10/lib-dynload/_codecs_iso2022.cpython-310-darwin.so': bytearray(b'\x8eL \xf9'
+                                                                           b'\xc7\x01j\xcf'
+                                                                           b'h\xff\x82+'
+                                                                           b'\x85\xd9y\x86'
+                                                                           b'(W\xe3\x8e'),
+ 'python3.10/lib-dynload/_codecs_jp.cpython-310-darwin.so': bytearray(b'\xcbE\x9b\xee'
+                                                                      b'^\x0f@\xc2'
+                                                                      b'\x8c\xb3\xe6w'
+                                                                      b'\xff\xe08\xaf'
+                                                                      b'\xd3\xfe!\x1f'),
+ 'python3.10/lib-dynload/_codecs_kr.cpython-310-darwin.so': bytearray(b' \x15At'
+                                                                      b'{\xc0\x91M'
+                                                                      b'\xc3\xc4\x1a\x89'
+                                                                      b'\x97\x98\xc2\x9f'
+                                                                      b'\x01K~V'),
+ 'python3.10/lib-dynload/_codecs_tw.cpython-310-darwin.so': bytearray(b'&0\xa8C'
+                                                                      b'\x0f\xf3\x0c\xbb'
+                                                                      b'\x05\x85\x08\xa7'
+                                                                      b'\xbf\xa9\x1f\x9e'
+                                                                      b'\xda\x1c\x9c\xac'),
+ 'python3.10/lib-dynload/_contextvars.cpython-310-darwin.so': bytearray(b'rg\x0cG'
+                                                                        b'e\xde\xcc\x06'
+                                                                        b'V\xaa\xe8\x9d'
+                                                                        b'\xf7\xfbbw'
+                                                                        b'\xd9\x13\xe2\x15'),
+ 'python3.10/lib-dynload/_csv.cpython-310-darwin.so': bytearray(b'N(P.'
+                                                                b'\xf47,\xf9'
+                                                                b')\x0bm\xc9'
+                                                                b'\xb8\x0f\xc0\xd1'
+                                                                b'\x92^\xee\x0c'),
+ 'python3.10/lib-dynload/_ctypes.cpython-310-darwin.so': bytearray(b"\x94\t#'"
+                                                                   b'\xd0@\xb3\xa8'
+                                                                   b'~\x95K\xff'
+                                                                   b'\x8b\x88e\xa6'
+                                                                   b'\xb1\xe3\x8e\x1d'),
+ 'python3.10/lib-dynload/_datetime.cpython-310-darwin.so': bytearray(b'\xc2\xcd\x92\x8a'
+                                                                     b' \x04tZ'
+                                                                     b'\x8dRM\x8f'
+                                                                     b'\xf3\x7fu]'
+                                                                     b'\x02\xcf\x8b\x18'),
+ 'python3.10/lib-dynload/_decimal.cpython-310-darwin.so': bytearray(b'\xac\x93\n\n'
+                                                                    b'\xd7S\x8e\r'
+                                                                    b'~\xda\xa5F'
+                                                                    b'\x909\x9d\x0e'
+                                                                    b'kJu\xd9'),
+ 'python3.10/lib-dynload/_elementtree.cpython-310-darwin.so': bytearray(b'\xc9\xae\xb9Z'
+                                                                        b'\xcc\xcdn\xf2'
+                                                                        b'P\xa3@\xe3'
+                                                                        b'p\xdb\xdfZ'
+                                                                        b'\x1a\xe6\t\xd8'),
+ 'python3.10/lib-dynload/_hashlib.cpython-310-darwin.so': bytearray(b'\xd9\xe0\xdc]'
+                                                                    b'l\x00\x8d\xa5'
+                                                                    b'\xa7\xb2\x11\x1f'
+                                                                    b'\x86\x81A\x0c'
+                                                                    b'U\xdci1'),
+ 'python3.10/lib-dynload/_heapq.cpython-310-darwin.so': bytearray(b'\xf3k<M'
+                                                                  b'\xc0\x7f\xcb\x0c'
+                                                                  b'\x0b\xc2\xd7\x19'
+                                                                  b'.\xe2U\x06'
+                                                                  b'\xcb\xbc%b'),
+ 'python3.10/lib-dynload/_json.cpython-310-darwin.so': bytearray(b'\x8c"x\x19'
+                                                                 b'|\xc7\xb1,'
+                                                                 b'\xd7J\x0f\xb3'
+                                                                 b'(\xfd\x94\xac'
+                                                                 b'u\xb0\xebU'),
+ 'python3.10/lib-dynload/_lzma.cpython-310-darwin.so': bytearray(b'\x17R\xda\xbe'
+                                                                 b'\xedyN\xe2'
+                                                                 b'\x89\xf6Q\xd7'
+                                                                 b'\x05\xb3k\x99'
+                                                                 b'\xa7\x10k\x99'),
+ 'python3.10/lib-dynload/_md5.cpython-310-darwin.so': bytearray(b'\xe7.kr'
+                                                                b'\xdb.\xfbY'
+                                                                b'\xbb\x96\xa1\xed'
+                                                                b';\xe7y\xc6'
+                                                                b'\xdf\xe6\xfb\xd0'),
+ 'python3.10/lib-dynload/_multibytecodec.cpython-310-darwin.so': bytearray(b'\x08\xd1\xe9A'
+                                                                           b'\x1fo\x87K'
+                                                                           b'k\x1b\x9e\xce'
+                                                                           b'Hz\x96\x7f'
+                                                                           b'\xba\x14\xca$'),
+ 'python3.10/lib-dynload/_multiprocessing.cpython-310-darwin.so': bytearray(b'\x80V\xd7r'
+                                                                            b'\xebnD~'
+                                                                            b'\x17\xe2\xc6\xae'
+                                                                            b'\x93m1\xe5'
+                                                                            b'\xe3\x9f\xc8\xdb'),
+ 'python3.10/lib-dynload/_opcode.cpython-310-darwin.so': bytearray(b'\xbfAaU'
+                                                                   b']\x1f\x0c\x87'
+                                                                   b'R\xfc5\xa8'
+                                                                   b'M\x19\xaeg'
+                                                                   b'\x1cL\xe2\x84'),
+ 'python3.10/lib-dynload/_pickle.cpython-310-darwin.so': bytearray(b'\x8ecXU'
+                                                                   b'\x17\xc51\xc9'
+                                                                   b'\x86\x96*\xea'
+                                                                   b'\xd3\xc0\x12\x0c'
+                                                                   b'\xa0;O\xd6'),
+ 'python3.10/lib-dynload/_posixshmem.cpython-310-darwin.so': bytearray(b'"_\xc4W'
+                                                                       b'\x9f\x1b\xb2C'
+                                                                       b'\x93\xbf1d'
+                                                                       b'\xdb\x0c\xf9\\'
+                                                                       b'\x93P\xff\x9f'),
+ 'python3.10/lib-dynload/_posixsubprocess.cpython-310-darwin.so': bytearray(b'%\xf7T\x83'
+                                                                            b'P\xbd\x0b\x03'
+                                                                            b'5\x81\xbd\x1d'
+                                                                            b'e\xab)\xb3'
+                                                                            b'H\xd3\x10\xa2'),
+ 'python3.10/lib-dynload/_queue.cpython-310-darwin.so': bytearray(b'\xa2r\x00\x98'
+                                                                  b'\x15\x9b\xf5\x93'
+                                                                  b'\x9b^\x85\xba'
+                                                                  b'\xed\xa1\xec\xaa'
+                                                                  b'~\xbat\x0c'),
+ 'python3.10/lib-dynload/_random.cpython-310-darwin.so': bytearray(b"\xb1'\x89E"
+                                                                   b'\xba\xac\xbb\x1b'
+                                                                   b'4\xfc\xbc\xc4'
+                                                                   b'\x7f\xc5T\xed'
+                                                                   b',3z\xd1'),
+ 'python3.10/lib-dynload/_scproxy.cpython-310-darwin.so': bytearray(b'\x03}m>'
+                                                                    b'\x86\xc0x\xcf'
+                                                                    b'\x04D\xcdu'
+                                                                    b'^\xb3\xe0C'
+                                                                    b'qma0'),
+ 'python3.10/lib-dynload/_sha1.cpython-310-darwin.so': bytearray(b'9\xb66b'
+                                                                 b'g\xb9\x0b\xde'
+                                                                 b'T\x1eIU'
+                                                                 b'\xcf\xb6\xea\xc2'
+                                                                 b'\xdb\x81$d'),
+ 'python3.10/lib-dynload/_sha256.cpython-310-darwin.so': bytearray(b'{}\xdb7'
+                                                                   b'\x8b\xa8\xfd\xaf'
+                                                                   b'\xd9"s\xf3'
+                                                                   b'\xf2\xe7\xdb\x96'
+                                                                   b'\xc5g\x199'),
+ 'python3.10/lib-dynload/_sha3.cpython-310-darwin.so': bytearray(b'nh\xdb\xe5'
+                                                                 b's\x0c\x0c\n'
+                                                                 b'\x90Z\xb7\xb5'
+                                                                 b'\x00#\xef\x16'
+                                                                 b'\xf4\xee\xf3]'),
+ 'python3.10/lib-dynload/_sha512.cpython-310-darwin.so': bytearray(b'\x1e!\xcf\xdf'
+                                                                   b'l\xff,\x19'
+                                                                   b'v\x96\xdc\x1f'
+                                                                   b'\xfar\x14\x1a'
+                                                                   b'\xb0\x84\xd4\x12'),
+ 'python3.10/lib-dynload/_socket.cpython-310-darwin.so': bytearray(b'\x15o\x82W'
+                                                                   b'\x9b\xcf\x03\xda'
+                                                                   b"'\xe3\xa2i"
+                                                                   b'\x9d\xd7\xa7\xf5'
+                                                                   b'R\xd6\n\xd2'),
+ 'python3.10/lib-dynload/_ssl.cpython-310-darwin.so': bytearray(b'\xcdn\xb2\xd7'
+                                                                b'z\xe8\x9d\x14'
+                                                                b'b2s\xc3'
+                                                                b'\x86\x12)D'
+                                                                b'\x87t\xb0\xce'),
+ 'python3.10/lib-dynload/_statistics.cpython-310-darwin.so': bytearray(b'\xb1R<J'
+                                                                       b'\xd5$\xa2\x19'
+                                                                       b'\xf0\x83\xb6\xd7'
+                                                                       b'\xd1\x01\xd0\x8c'
+                                                                       b'u\x92\x16['),
+ 'python3.10/lib-dynload/_struct.cpython-310-darwin.so': bytearray(b'\xf4\x8e\xd4\xa6'
+                                                                   b'\x05\x06wE'
+                                                                   b'\xf0x\xd5\x02'
+                                                                   b'\xe6k\xb5\x96'
+                                                                   b'\xa6N\x80K'),
+ 'python3.10/lib-dynload/_tkinter.cpython-310-darwin.so': bytearray(b'\xb91V\x83'
+                                                                    b'\x1b\xbb\xacM'
+                                                                    b'\xe7\xa7%\x11'
+                                                                    b'\x9a\x87E\xee'
+                                                                    b'\xbf\xd8\xff('),
+ 'python3.10/lib-dynload/array.cpython-310-darwin.so': bytearray(b'\x01\xde\xaa\x1c'
+                                                                 b'\x83\x12\xe0\x83'
+                                                                 b'kPcax2H\xdc'
+                                                                 b'}i,\xc1'),
+ 'python3.10/lib-dynload/binascii.cpython-310-darwin.so': bytearray(b'\xb9\xe2\x1a+'
+                                                                    b'\xbe\x93>\x08'
+                                                                    b'\x1e\xd3Al'
+                                                                    b'z\x0bCw'
+                                                                    b'\xb2I\xec\x19'),
+ 'python3.10/lib-dynload/fcntl.cpython-310-darwin.so': bytearray(b'b\xc1\xd5\xa1'
+                                                                 b'j\x9fdv'
+                                                                 b'\xc9\xd1M\x16'
+                                                                 b'\x19\x9b\x01\xad'
+                                                                 b'\xcb\xdc&G'),
+ 'python3.10/lib-dynload/grp.cpython-310-darwin.so': bytearray(b'hi"8'
+                                                               b'\x08\xf3Q\xcf'
+                                                               b'\xb3\xf1E\xe4'
+                                                               b"'b\xfc\x8c"
+                                                               b'\x10o^\xc9'),
+ 'python3.10/lib-dynload/math.cpython-310-darwin.so': bytearray(b'Ty=G'
+                                                                b'\xdc\xbd\xd09'
+                                                                b'ak9\xbd'
+                                                                b'\x9e&v\x8a'
+                                                                b'i\xfa\xc0\x92'),
+ 'python3.10/lib-dynload/mmap.cpython-310-darwin.so': bytearray(b'3\xbe\xc9\xaf'
+                                                                b'\xe4a\xad\xc8'
+                                                                b'\xefT`\r'
+                                                                b'\x81\xfawB'
+                                                                b'W\xca9?'),
+ 'python3.10/lib-dynload/pyexpat.cpython-310-darwin.so': bytearray(b'J<\x8a&'
+                                                                   b'MiW\xdf'
+                                                                   b'\xb3\xce\x98\xd4'
+                                                                   b'\x92^H#'
+                                                                   b'\xfd\x13!\x9b'),
+ 'python3.10/lib-dynload/readline.cpython-310-darwin.so': bytearray(b'\xc2\x8eE\xba'
+                                                                    b'np\x1e\xb7'
+                                                                    b'\x02\x9d\x9e^'
+                                                                    b'\xc6\xab9,'
+                                                                    b'5k\xde\xe0'),
+ 'python3.10/lib-dynload/resource.cpython-310-darwin.so': bytearray(b'b\xe0:\t'
+                                                                    b'E\x86T}'
+                                                                    b'\x1c\xe0\xcb\x85'
+                                                                    b'7\x08Th'
+                                                                    b'\xcb\x89\x97\xaa'),
+ 'python3.10/lib-dynload/select.cpython-310-darwin.so': bytearray(b'}\x008G'
+                                                                  b'n\xae\xd3\xaf'
+                                                                  b'd\x9co\x10'
+                                                                  b"\xd6'k\x1a"
+                                                                  b'ag\xe0\xbe'),
+ 'python3.10/lib-dynload/termios.cpython-310-darwin.so': bytearray(b'fhUp'
+                                                                   b'\t;\xdc\xff'
+                                                                   b'\xef\xbe"\xeb'
+                                                                   b'\x99\xfb\xa4p'
+                                                                   b'\xfbzU\xbc'),
+ 'python3.10/lib-dynload/unicodedata.cpython-310-darwin.so': bytearray(b'\xc1\xaf\\\x0c'
+                                                                       b'7\x1a\xf1<'
+                                                                       b'\x80\xf8\xa5\xe7'
+                                                                       b'c\\A\xb2'
+                                                                       b'NG-u'),
+ 'python3.10/lib-dynload/zlib.cpython-310-darwin.so': bytearray(b't\xc5#\x1c'
+                                                                b'\xc8R0\xe6'
+                                                                b'\x126X\xbe'
+                                                                b'\xb7\x8b2\xa0'
+                                                                b'.fN\xb9'),
+ 'python3__dot__10/lib-dynload/_asyncio.cpython-310-darwin.so': bytearray(b'h#\xdf\x96'
+                                                                          b'\xa2w\x00\xf1'
+                                                                          b'\xf18K6'
+                                                                          b'\xdd\x1e(\x83'
+                                                                          b'\xdc\x10\xb0;'),
+ 'python3__dot__10/lib-dynload/_bisect.cpython-310-darwin.so': bytearray(b'\x1f\xee\xa5E'
+                                                                         b'\x7f0\xf0\xec'
+                                                                         b'\xa0\x0f$\x8d'
+                                                                         b'\xdb=\xe17'
+                                                                         b'\xe2\xdd\\\x0c'),
+ 'python3__dot__10/lib-dynload/_blake2.cpython-310-darwin.so': bytearray(b'\xf5\xaar\xdd'
+                                                                         b'\xb4H\xe2\x02'
+                                                                         b'u}\xe8-'
+                                                                         b"'\x9e\x01\xff"
+                                                                         b'\xd5\xdc\xa6T'),
+ 'python3__dot__10/lib-dynload/_bz2.cpython-310-darwin.so': bytearray(b'\xad\xa3\xf13'
+                                                                      b'\x94\xb1\xb4L'
+                                                                      b'7\xc4\xac\xac'
+                                                                      b'2G\x8e\x88'
+                                                                      b'X\x1cY%'),
+ 'python3__dot__10/lib-dynload/_codecs_cn.cpython-310-darwin.so': bytearray(b'\xe8\xf3\xff,'
+                                                                            b'\x10B\xbe\xfe'
+                                                                            b'\x165vx'
+                                                                            b'v\xf6\xcd+'
+                                                                            b'\x88#\xef\xec'),
+ 'python3__dot__10/lib-dynload/_codecs_hk.cpython-310-darwin.so': bytearray(b'F#\x87l'
+                                                                            b'g\xc4\xc3\xd8'
+                                                                            b'\x94\xf4IJ'
+                                                                            b'\xae\x94p\x0f'
+                                                                            b';\xfbK8'),
+ 'python3__dot__10/lib-dynload/_codecs_iso2022.cpython-310-darwin.so': bytearray(b'\x8eL \xf9'
+                                                                                 b'\xc7\x01j\xcf'
+                                                                                 b'h\xff\x82+'
+                                                                                 b'\x85\xd9y\x86'
+                                                                                 b'(W\xe3\x8e'),
+ 'python3__dot__10/lib-dynload/_codecs_jp.cpython-310-darwin.so': bytearray(b'\xcbE\x9b\xee'
+                                                                            b'^\x0f@\xc2'
+                                                                            b'\x8c\xb3\xe6w'
+                                                                            b'\xff\xe08\xaf'
+                                                                            b'\xd3\xfe!\x1f'),
+ 'python3__dot__10/lib-dynload/_codecs_kr.cpython-310-darwin.so': bytearray(b' \x15At'
+                                                                            b'{\xc0\x91M'
+                                                                            b'\xc3\xc4\x1a\x89'
+                                                                            b'\x97\x98\xc2\x9f'
+                                                                            b'\x01K~V'),
+ 'python3__dot__10/lib-dynload/_codecs_tw.cpython-310-darwin.so': bytearray(b'&0\xa8C'
+                                                                            b'\x0f\xf3\x0c\xbb'
+                                                                            b'\x05\x85\x08\xa7'
+                                                                            b'\xbf\xa9\x1f\x9e'
+                                                                            b'\xda\x1c\x9c\xac'),
+ 'python3__dot__10/lib-dynload/_contextvars.cpython-310-darwin.so': bytearray(b'rg\x0cG'
+                                                                              b'e\xde\xcc\x06'
+                                                                              b'V\xaa\xe8\x9d'
+                                                                              b'\xf7\xfbbw'
+                                                                              b'\xd9\x13\xe2\x15'),
+ 'python3__dot__10/lib-dynload/_csv.cpython-310-darwin.so': bytearray(b'N(P.'
+                                                                      b'\xf47,\xf9'
+                                                                      b')\x0bm\xc9'
+                                                                      b'\xb8\x0f\xc0\xd1'
+                                                                      b'\x92^\xee\x0c'),
+ 'python3__dot__10/lib-dynload/_ctypes.cpython-310-darwin.so': bytearray(b"\x94\t#'"
+                                                                         b'\xd0@\xb3\xa8'
+                                                                         b'~\x95K\xff'
+                                                                         b'\x8b\x88e\xa6'
+                                                                         b'\xb1\xe3\x8e\x1d'),
+ 'python3__dot__10/lib-dynload/_datetime.cpython-310-darwin.so': bytearray(b'\xc2\xcd\x92\x8a'
+                                                                           b' \x04tZ'
+                                                                           b'\x8dRM\x8f'
+                                                                           b'\xf3\x7fu]'
+                                                                           b'\x02\xcf\x8b\x18'),
+ 'python3__dot__10/lib-dynload/_decimal.cpython-310-darwin.so': bytearray(b'\xac\x93\n\n'
+                                                                          b'\xd7S\x8e\r'
+                                                                          b'~\xda\xa5F'
+                                                                          b'\x909\x9d\x0e'
+                                                                          b'kJu\xd9'),
+ 'python3__dot__10/lib-dynload/_elementtree.cpython-310-darwin.so': bytearray(b'\xc9\xae\xb9Z'
+                                                                              b'\xcc\xcdn\xf2'
+                                                                              b'P\xa3@\xe3'
+                                                                              b'p\xdb\xdfZ'
+                                                                              b'\x1a\xe6\t\xd8'),
+ 'python3__dot__10/lib-dynload/_hashlib.cpython-310-darwin.so': bytearray(b'\xd9\xe0\xdc]'
+                                                                          b'l\x00\x8d\xa5'
+                                                                          b'\xa7\xb2\x11\x1f'
+                                                                          b'\x86\x81A\x0c'
+                                                                          b'U\xdci1'),
+ 'python3__dot__10/lib-dynload/_heapq.cpython-310-darwin.so': bytearray(b'\xf3k<M'
+                                                                        b'\xc0\x7f\xcb\x0c'
+                                                                        b'\x0b\xc2\xd7\x19'
+                                                                        b'.\xe2U\x06'
+                                                                        b'\xcb\xbc%b'),
+ 'python3__dot__10/lib-dynload/_json.cpython-310-darwin.so': bytearray(b'\x8c"x\x19'
+                                                                       b'|\xc7\xb1,'
+                                                                       b'\xd7J\x0f\xb3'
+                                                                       b'(\xfd\x94\xac'
+                                                                       b'u\xb0\xebU'),
+ 'python3__dot__10/lib-dynload/_lzma.cpython-310-darwin.so': bytearray(b'\x17R\xda\xbe'
+                                                                       b'\xedyN\xe2'
+                                                                       b'\x89\xf6Q\xd7'
+                                                                       b'\x05\xb3k\x99'
+                                                                       b'\xa7\x10k\x99'),
+ 'python3__dot__10/lib-dynload/_md5.cpython-310-darwin.so': bytearray(b'\xe7.kr'
+                                                                      b'\xdb.\xfbY'
+                                                                      b'\xbb\x96\xa1\xed'
+                                                                      b';\xe7y\xc6'
+                                                                      b'\xdf\xe6\xfb\xd0'),
+ 'python3__dot__10/lib-dynload/_multibytecodec.cpython-310-darwin.so': bytearray(b'\x08\xd1\xe9A'
+                                                                                 b'\x1fo\x87K'
+                                                                                 b'k\x1b\x9e\xce'
+                                                                                 b'Hz\x96\x7f'
+                                                                                 b'\xba\x14\xca$'),
+ 'python3__dot__10/lib-dynload/_multiprocessing.cpython-310-darwin.so': bytearray(b'\x80V\xd7r'
+                                                                                  b'\xebnD~'
+                                                                                  b'\x17\xe2\xc6\xae'
+                                                                                  b'\x93m1\xe5'
+                                                                                  b'\xe3\x9f\xc8\xdb'),
+ 'python3__dot__10/lib-dynload/_opcode.cpython-310-darwin.so': bytearray(b'\xbfAaU'
+                                                                         b']\x1f\x0c\x87'
+                                                                         b'R\xfc5\xa8'
+                                                                         b'M\x19\xaeg'
+                                                                         b'\x1cL\xe2\x84'),
+ 'python3__dot__10/lib-dynload/_pickle.cpython-310-darwin.so': bytearray(b'\x8ecXU'
+                                                                         b'\x17\xc51\xc9'
+                                                                         b'\x86\x96*\xea'
+                                                                         b'\xd3\xc0\x12\x0c'
+                                                                         b'\xa0;O\xd6'),
+ 'python3__dot__10/lib-dynload/_posixshmem.cpython-310-darwin.so': bytearray(b'"_\xc4W'
+                                                                             b'\x9f\x1b\xb2C'
+                                                                             b'\x93\xbf1d'
+                                                                             b'\xdb\x0c\xf9\\'
+                                                                             b'\x93P\xff\x9f'),
+ 'python3__dot__10/lib-dynload/_posixsubprocess.cpython-310-darwin.so': bytearray(b'%\xf7T\x83'
+                                                                                  b'P\xbd\x0b\x03'
+                                                                                  b'5\x81\xbd\x1d'
+                                                                                  b'e\xab)\xb3'
+                                                                                  b'H\xd3\x10\xa2'),
+ 'python3__dot__10/lib-dynload/_queue.cpython-310-darwin.so': bytearray(b'\xa2r\x00\x98'
+                                                                        b'\x15\x9b\xf5\x93'
+                                                                        b'\x9b^\x85\xba'
+                                                                        b'\xed\xa1\xec\xaa'
+                                                                        b'~\xbat\x0c'),
+ 'python3__dot__10/lib-dynload/_random.cpython-310-darwin.so': bytearray(b"\xb1'\x89E"
+                                                                         b'\xba\xac\xbb\x1b'
+                                                                         b'4\xfc\xbc\xc4'
+                                                                         b'\x7f\xc5T\xed'
+                                                                         b',3z\xd1'),
+ 'python3__dot__10/lib-dynload/_scproxy.cpython-310-darwin.so': bytearray(b'\x03}m>'
+                                                                          b'\x86\xc0x\xcf'
+                                                                          b'\x04D\xcdu'
+                                                                          b'^\xb3\xe0C'
+                                                                          b'qma0'),
+ 'python3__dot__10/lib-dynload/_sha1.cpython-310-darwin.so': bytearray(b'9\xb66b'
+                                                                       b'g\xb9\x0b\xde'
+                                                                       b'T\x1eIU'
+                                                                       b'\xcf\xb6\xea\xc2'
+                                                                       b'\xdb\x81$d'),
+ 'python3__dot__10/lib-dynload/_sha256.cpython-310-darwin.so': bytearray(b'{}\xdb7'
+                                                                         b'\x8b\xa8\xfd\xaf'
+                                                                         b'\xd9"s\xf3'
+                                                                         b'\xf2\xe7\xdb\x96'
+                                                                         b'\xc5g\x199'),
+ 'python3__dot__10/lib-dynload/_sha3.cpython-310-darwin.so': bytearray(b'nh\xdb\xe5'
+                                                                       b's\x0c\x0c\n'
+                                                                       b'\x90Z\xb7\xb5'
+                                                                       b'\x00#\xef\x16'
+                                                                       b'\xf4\xee\xf3]'),
+ 'python3__dot__10/lib-dynload/_sha512.cpython-310-darwin.so': bytearray(b'\x1e!\xcf\xdf'
+                                                                         b'l\xff,\x19'
+                                                                         b'v\x96\xdc\x1f'
+                                                                         b'\xfar\x14\x1a'
+                                                                         b'\xb0\x84\xd4\x12'),
+ 'python3__dot__10/lib-dynload/_socket.cpython-310-darwin.so': bytearray(b'\x15o\x82W'
+                                                                         b'\x9b\xcf\x03\xda'
+                                                                         b"'\xe3\xa2i"
+                                                                         b'\x9d\xd7\xa7\xf5'
+                                                                         b'R\xd6\n\xd2'),
+ 'python3__dot__10/lib-dynload/_ssl.cpython-310-darwin.so': bytearray(b'\xcdn\xb2\xd7'
+                                                                      b'z\xe8\x9d\x14'
+                                                                      b'b2s\xc3'
+                                                                      b'\x86\x12)D'
+                                                                      b'\x87t\xb0\xce'),
+ 'python3__dot__10/lib-dynload/_statistics.cpython-310-darwin.so': bytearray(b'\xb1R<J'
+                                                                             b'\xd5$\xa2\x19'
+                                                                             b'\xf0\x83\xb6\xd7'
+                                                                             b'\xd1\x01\xd0\x8c'
+                                                                             b'u\x92\x16['),
+ 'python3__dot__10/lib-dynload/_struct.cpython-310-darwin.so': bytearray(b'\xf4\x8e\xd4\xa6'
+                                                                         b'\x05\x06wE'
+                                                                         b'\xf0x\xd5\x02'
+                                                                         b'\xe6k\xb5\x96'
+                                                                         b'\xa6N\x80K'),
+ 'python3__dot__10/lib-dynload/_tkinter.cpython-310-darwin.so': bytearray(b'\xb91V\x83'
+                                                                          b'\x1b\xbb\xacM'
+                                                                          b'\xe7\xa7%\x11'
+                                                                          b'\x9a\x87E\xee'
+                                                                          b'\xbf\xd8\xff('),
+ 'python3__dot__10/lib-dynload/array.cpython-310-darwin.so': bytearray(b'\x01\xde\xaa\x1c'
+                                                                       b'\x83\x12\xe0\x83'
+                                                                       b'kPca'
+                                                                       b'x2H\xdc'
+                                                                       b'}i,\xc1'),
+ 'python3__dot__10/lib-dynload/binascii.cpython-310-darwin.so': bytearray(b'\xb9\xe2\x1a+'
+                                                                          b'\xbe\x93>\x08'
+                                                                          b'\x1e\xd3Al'
+                                                                          b'z\x0bCw'
+                                                                          b'\xb2I\xec\x19'),
+ 'python3__dot__10/lib-dynload/fcntl.cpython-310-darwin.so': bytearray(b'b\xc1\xd5\xa1'
+                                                                       b'j\x9fdv'
+                                                                       b'\xc9\xd1M\x16'
+                                                                       b'\x19\x9b\x01\xad'
+                                                                       b'\xcb\xdc&G'),
+ 'python3__dot__10/lib-dynload/grp.cpython-310-darwin.so': bytearray(b'hi"8'
+                                                                     b'\x08\xf3Q\xcf'
+                                                                     b'\xb3\xf1E\xe4'
+                                                                     b"'b\xfc\x8c"
+                                                                     b'\x10o^\xc9'),
+ 'python3__dot__10/lib-dynload/math.cpython-310-darwin.so': bytearray(b'Ty=G'
+                                                                      b'\xdc\xbd\xd09'
+                                                                      b'ak9\xbd'
+                                                                      b'\x9e&v\x8a'
+                                                                      b'i\xfa\xc0\x92'),
+ 'python3__dot__10/lib-dynload/mmap.cpython-310-darwin.so': bytearray(b'3\xbe\xc9\xaf'
+                                                                      b'\xe4a\xad\xc8'
+                                                                      b'\xefT`\r'
+                                                                      b'\x81\xfawB'
+                                                                      b'W\xca9?'),
+ 'python3__dot__10/lib-dynload/pyexpat.cpython-310-darwin.so': bytearray(b'J<\x8a&'
+                                                                         b'MiW\xdf'
+                                                                         b'\xb3\xce\x98\xd4'
+                                                                         b'\x92^H#'
+                                                                         b'\xfd\x13!\x9b'),
+ 'python3__dot__10/lib-dynload/readline.cpython-310-darwin.so': bytearray(b'\xc2\x8eE\xba'
+                                                                          b'np\x1e\xb7'
+                                                                          b'\x02\x9d\x9e^'
+                                                                          b'\xc6\xab9,'
+                                                                          b'5k\xde\xe0'),
+ 'python3__dot__10/lib-dynload/resource.cpython-310-darwin.so': bytearray(b'b\xe0:\t'
+                                                                          b'E\x86T}'
+                                                                          b'\x1c\xe0\xcb\x85'
+                                                                          b'7\x08Th'
+                                                                          b'\xcb\x89\x97\xaa'),
+ 'python3__dot__10/lib-dynload/select.cpython-310-darwin.so': bytearray(b'}\x008G'
+                                                                        b'n\xae\xd3\xaf'
+                                                                        b'd\x9co\x10'
+                                                                        b"\xd6'k\x1a"
+                                                                        b'ag\xe0\xbe'),
+ 'python3__dot__10/lib-dynload/termios.cpython-310-darwin.so': bytearray(b'fhUp'
+                                                                         b'\t;\xdc\xff'
+                                                                         b'\xef\xbe"\xeb'
+                                                                         b'\x99\xfb\xa4p'
+                                                                         b'\xfbzU\xbc'),
+ 'python3__dot__10/lib-dynload/unicodedata.cpython-310-darwin.so': bytearray(b'\xc1\xaf\\\x0c'
+                                                                             b'7\x1a\xf1<'
+                                                                             b'\x80\xf8\xa5\xe7'
+                                                                             b'c\\A\xb2'
+                                                                             b'NG-u'),
+ 'python3__dot__10/lib-dynload/zlib.cpython-310-darwin.so': bytearray(b't\xc5#\x1c'
+                                                                      b'\xc8R0\xe6'
+                                                                      b'\x126X\xbe'
+                                                                      b'\xb7\x8b2\xa0'
+                                                                      b'.fN\xb9')}

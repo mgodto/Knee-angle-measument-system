@@ -61,6 +61,8 @@ class InteractiveImageCanvas(ttk.Frame):
         self._on_press = None
         self._on_drag = None
         self._on_release = None
+        self._overlay_drawer = None
+        self._overlay_tag = "annotation_overlay"
 
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
@@ -98,11 +100,20 @@ class InteractiveImageCanvas(ttk.Frame):
         self._on_drag = on_drag
         self._on_release = on_release
 
+    def set_overlay_drawer(self, overlay_drawer=None) -> None:
+        self._overlay_drawer = overlay_drawer
+        self._redraw_overlay()
+
+    @property
+    def overlay_tag(self) -> str:
+        return self._overlay_tag
+
     def clear(self, text: str | None = None) -> None:
         self._base_image = None
         self._photo = None
         self.zoom = 1.0
         self._auto_fit_pending = False
+        self.canvas.delete(self._overlay_tag)
         self.canvas.itemconfigure(self._image_id, image="", state="hidden")
         self.canvas.itemconfigure(self._text_id, text=text or self.empty_text, state="normal")
         self.canvas.configure(scrollregion=(0, 0, 1, 1))
@@ -161,6 +172,17 @@ class InteractiveImageCanvas(ttk.Frame):
         self.canvas.coords(self._image_id, 0, 0)
         self.canvas.itemconfigure(self._text_id, state="hidden")
         self.canvas.configure(scrollregion=(0, 0, display_w, display_h))
+        self._redraw_overlay()
+
+    def _redraw_overlay(self) -> None:
+        self.canvas.delete(self._overlay_tag)
+        if self._base_image is None or self._overlay_drawer is None:
+            return
+        self._overlay_drawer(self)
+        self.canvas.tag_raise(self._overlay_tag)
+
+    def image_to_canvas(self, point: np.ndarray) -> tuple[float, float]:
+        return float(point[0] * self.zoom), float(point[1] * self.zoom)
 
     def _current_display_size(self) -> tuple[int, int]:
         if self._base_image is None:
@@ -324,6 +346,7 @@ class AnnotationApp:
 
         self.annotation_view = InteractiveImageCanvas(left, empty_text="Open a raw image")
         self.annotation_view.grid(row=0, column=0, sticky="nsew")
+        self.annotation_view.set_overlay_drawer(self._draw_editor_overlay)
         self.annotation_view.set_pointer_callbacks(
             on_press=self._on_canvas_press,
             on_drag=self._on_canvas_drag,
@@ -651,7 +674,10 @@ class AnnotationApp:
         )
 
     def _on_canvas_press(self, image_x: float, image_y: float) -> None:
-        hit = self._hit_test(np.array([image_x, image_y], dtype=np.float32))
+        hit = self._hit_test(
+            np.array([image_x, image_y], dtype=np.float32),
+            zoom=self.annotation_view.zoom,
+        )
         self.drag_target = hit
         self.drag_changed = False
         self.blank_press = hit is None
@@ -814,18 +840,20 @@ class AnnotationApp:
             }
         return payload
 
-    def _hit_test(self, target_point: np.ndarray) -> tuple | None:
+    def _hit_test(self, target_point: np.ndarray, zoom: float = 1.0) -> tuple | None:
         hits: list[tuple[float, tuple]] = []
+        image_point_radius = POINT_HANDLE_RADIUS / max(zoom, 1e-6)
+        image_line_radius = LINE_HANDLE_RADIUS / max(zoom, 1e-6)
 
         for name, point in self.points.items():
             distance = float(np.linalg.norm(point - target_point))
-            if distance <= POINT_HANDLE_RADIUS:
+            if distance <= image_point_radius:
                 hits.append((distance, ("point", name)))
 
         for line_name, endpoints in self.lines.items():
             for endpoint_name, point in endpoints.items():
                 distance = float(np.linalg.norm(point - target_point))
-                if distance <= LINE_HANDLE_RADIUS:
+                if distance <= image_line_radius:
                     hits.append((distance, ("line", line_name, endpoint_name)))
 
         if not hits:
@@ -897,8 +925,7 @@ class AnnotationApp:
             self.preview_mode_var.set("Preview mode: waiting for annotations")
             return
 
-        editor_image = self._render_editor_overlay()
-        self.annotation_view.set_image(editor_image, reset_view=reset_view)
+        self.annotation_view.set_image(self.raw_image, reset_view=reset_view)
 
         if len(self.points) != len(ANNOTATION_POINT_SPECS):
             self.preview_view.clear("Place all 8 points to enable the measurement preview")
@@ -940,6 +967,106 @@ class AnnotationApp:
             self.preview_mode_var.set(f"Preview mode: using manual joint lines, side {side}")
         else:
             self.preview_mode_var.set(f"Preview mode: provisional line fits, side {side}")
+
+    def _draw_editor_overlay(self, view: InteractiveImageCanvas) -> None:
+        if self.raw_image is None:
+            return
+
+        tag = view.overlay_tag
+        point_radius_outer = 11
+        point_radius_inner = 8
+        line_handle_outer = 10
+        line_handle_inner = 7
+        line_width = 2
+        point_font = ("Helvetica", 13, "bold")
+        endpoint_font = ("Helvetica", 11, "bold")
+        line_font = ("Helvetica", 12, "bold")
+        selected_color = "#ffff00"
+        line_default_color = "#00dc78"
+        point_inner_color = "#00a0ff"
+        white = "#ffffff"
+
+        def canvas_point(point: np.ndarray) -> tuple[float, float]:
+            return view.image_to_canvas(point)
+
+        def draw_handle(point: np.ndarray, outer_radius: int, inner_radius: int, inner_color: str, outer_color: str) -> None:
+            x, y = canvas_point(point)
+            view.canvas.create_oval(
+                x - outer_radius,
+                y - outer_radius,
+                x + outer_radius,
+                y + outer_radius,
+                fill=outer_color,
+                outline="",
+                tags=(tag,),
+            )
+            view.canvas.create_oval(
+                x - inner_radius,
+                y - inner_radius,
+                x + inner_radius,
+                y + inner_radius,
+                fill=inner_color,
+                outline="",
+                tags=(tag,),
+            )
+
+        for line_name, line_label in ANNOTATION_LINE_SPECS:
+            line = self.lines.get(line_name, {})
+            p1 = line.get("p1")
+            p2 = line.get("p2")
+            is_selected = self.tool_mode.get() == "line" and line_name == self.current_line_name
+            line_color = selected_color if is_selected else line_default_color
+
+            if p1 is not None and p2 is not None:
+                x1, y1 = canvas_point(p1)
+                x2, y2 = canvas_point(p2)
+                view.canvas.create_line(x1, y1, x2, y2, fill=line_color, width=line_width, tags=(tag,))
+                mid = ((p1 + p2) * 0.5).astype(np.float32)
+                mx, my = canvas_point(mid)
+                view.canvas.create_text(
+                    mx + 8,
+                    my - 8,
+                    text=line_label,
+                    fill=line_color,
+                    font=line_font,
+                    anchor="sw",
+                    tags=(tag,),
+                )
+
+            for endpoint_name in ("p1", "p2"):
+                point = line.get(endpoint_name)
+                if point is None:
+                    continue
+                draw_handle(point, line_handle_outer, line_handle_inner, line_color, white)
+                x, y = canvas_point(point)
+                view.canvas.create_text(
+                    x + 10,
+                    y - 8,
+                    text=endpoint_name,
+                    fill=line_color,
+                    font=endpoint_font,
+                    anchor="sw",
+                    tags=(tag,),
+                )
+
+        for index, (name, _label) in enumerate(ANNOTATION_POINT_SPECS):
+            point = self.points.get(name)
+            if point is None:
+                continue
+
+            is_current = self.tool_mode.get() == "point" and index == self.current_index
+            outer_color = selected_color if is_current else white
+            draw_handle(point, point_radius_outer, point_radius_inner, point_inner_color, outer_color)
+            x, y = canvas_point(point)
+            view.canvas.create_text(
+                x + 10,
+                y - 10,
+                text=str(index + 1),
+                fill=selected_color,
+                font=point_font,
+                anchor="sw",
+                tags=(tag,),
+            )
 
     def _render_editor_overlay(self) -> np.ndarray:
         assert self.raw_image is not None

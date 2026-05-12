@@ -6,7 +6,7 @@ from pathlib import Path
 from PyInstaller.utils.hooks import collect_submodules
 
 
-project_root = Path(__file__).resolve().parent
+project_root = Path(SPECPATH).resolve()
 hiddenimports = collect_submodules("PIL") + collect_submodules("cv2")
 
 a = Analysis(
