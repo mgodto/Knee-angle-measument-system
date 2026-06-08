@@ -26,6 +26,10 @@ dist/
 *.exe
 *.msi
 *.zip
+*.pt
+*.pth
+runs/
+checkpoints/
 
 # Runtime logs
 logs/
@@ -36,6 +40,16 @@ images/
 outputs/
 annotations/
 annotations_test/
+
+# Papers / reference PDFs
+knee_alignment_paper/
+paper/
+papers/
+*.pdf
+
+# Generated slide workspaces / exports
+projects/
+*.pptx
 
 # IDE / editor
 .vscode/
