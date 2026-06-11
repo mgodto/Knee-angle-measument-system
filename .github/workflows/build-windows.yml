@@ -27,8 +27,8 @@ jobs:
       - name: Build Windows app
         run: .\build_windows.bat
 
-      - name: Upload Windows zip
+      - name: Upload Windows package
         uses: actions/upload-artifact@v4
         with:
           name: KneeAnnotationTool-windows
-          path: dist\KneeAnnotationTool-windows.zip
+          path: dist\KneeAnnotationTool
