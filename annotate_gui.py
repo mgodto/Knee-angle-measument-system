@@ -14,7 +14,11 @@ from PIL import Image, ImageTk
 from measure_angles import (
     ANNOTATION_LINE_SPECS,
     ANNOTATION_POINT_SPECS,
+    HKA_ANGLE_LABEL,
+    JLCA_ANGLE_LABEL,
     LOWER_ANGLE_LABEL,
+    RENDER_STYLE_CLINICAL,
+    RENDER_STYLE_DEBUG,
     UPPER_ANGLE_LABEL,
     infer_knee_side_from_sources,
     load_annotation,
@@ -296,7 +300,11 @@ class AnnotationApp:
         self.preview_mode_var = tk.StringVar(value="Preview mode: waiting for annotations")
         self.upper_angle_var = tk.StringVar(value=f"{UPPER_ANGLE_LABEL}: -")
         self.lower_angle_var = tk.StringVar(value=f"{LOWER_ANGLE_LABEL}: -")
+        self.jlca_angle_var = tk.StringVar(value=f"{JLCA_ANGLE_LABEL}: -")
+        self.hka_angle_var = tk.StringVar(value=f"{HKA_ANGLE_LABEL}: -")
         self.summary_var = tk.StringVar(value="Points 0 / 8, lines 0 / 2")
+        self.render_style_var = tk.StringVar(value=RENDER_STYLE_CLINICAL)
+        self.render_style_button_var = tk.StringVar(value="Style: Clinical")
 
         self._build_ui()
         self._refresh_lists()
@@ -335,8 +343,9 @@ class AnnotationApp:
 
         body = ttk.Frame(self.root, padding=(12, 0, 12, 12))
         body.pack(fill="both", expand=True)
-        body.columnconfigure(0, weight=5)
-        body.columnconfigure(1, weight=4)
+        body.columnconfigure(0, weight=1, uniform="image_panels")
+        body.columnconfigure(1, weight=1, uniform="image_panels")
+        body.columnconfigure(2, weight=0, minsize=360)
         body.rowconfigure(0, weight=1)
 
         left = ttk.LabelFrame(body, text="Raw Annotation", padding=8)
@@ -355,16 +364,12 @@ class AnnotationApp:
         ttk.Label(
             left,
             text="Left click: place selected item or drag existing handles, wheel: zoom, right/middle drag: pan, double-click: fit",
+            wraplength=420,
+            justify="left",
         ).grid(row=1, column=0, sticky="w", pady=(8, 0))
 
-        right = ttk.Frame(body)
-        right.grid(row=0, column=1, sticky="nsew")
-        right.rowconfigure(0, weight=3)
-        right.rowconfigure(1, weight=2)
-        right.columnconfigure(0, weight=1)
-
-        preview = ttk.LabelFrame(right, text="Measurement Preview", padding=8)
-        preview.grid(row=0, column=0, sticky="nsew")
+        preview = ttk.LabelFrame(body, text="Measurement Preview", padding=8)
+        preview.grid(row=0, column=1, sticky="nsew", padx=(0, 10))
         preview.rowconfigure(0, weight=1)
         preview.columnconfigure(0, weight=1)
 
@@ -373,16 +378,19 @@ class AnnotationApp:
         ttk.Label(
             preview,
             text="Wheel: zoom, right/middle drag: pan, double-click: fit",
+            wraplength=420,
+            justify="left",
         ).grid(row=1, column=0, sticky="w", pady=(8, 0))
 
-        controls = ttk.Frame(right)
-        controls.grid(row=1, column=0, sticky="nsew", pady=(10, 0))
+        controls = ttk.Frame(body)
+        controls.grid(row=0, column=2, sticky="nsew")
         controls.columnconfigure(0, weight=1)
-        controls.columnconfigure(1, weight=1)
+        controls.rowconfigure(1, weight=1)
         controls.rowconfigure(2, weight=1)
+        controls.rowconfigure(3, weight=1)
 
         tool_box = ttk.LabelFrame(controls, text="Tool", padding=8)
-        tool_box.grid(row=0, column=0, columnspan=2, sticky="ew")
+        tool_box.grid(row=0, column=0, sticky="ew")
         ttk.Radiobutton(tool_box, text="Points", variable=self.tool_mode, value="point", command=self._on_tool_changed).grid(
             row=0,
             column=0,
@@ -401,9 +409,16 @@ class AnnotationApp:
             sticky="w",
             pady=(8, 0),
         )
+        ttk.Button(tool_box, textvariable=self.render_style_button_var, command=self.toggle_render_style).grid(
+            row=2,
+            column=0,
+            columnspan=2,
+            sticky="ew",
+            pady=(10, 0),
+        )
 
         point_box = ttk.LabelFrame(controls, text="Points", padding=8)
-        point_box.grid(row=1, column=0, sticky="nsew", padx=(0, 6), pady=(10, 0))
+        point_box.grid(row=1, column=0, sticky="nsew", pady=(10, 0))
         point_box.rowconfigure(0, weight=1)
         point_box.columnconfigure(0, weight=1)
         self.point_list = tk.Listbox(point_box, height=10, exportselection=False, font=("Menlo", 11))
@@ -411,7 +426,7 @@ class AnnotationApp:
         self.point_list.bind("<<ListboxSelect>>", self._on_point_selected)
 
         line_box = ttk.LabelFrame(controls, text="Lines", padding=8)
-        line_box.grid(row=1, column=1, sticky="nsew", padx=(6, 0), pady=(10, 0))
+        line_box.grid(row=2, column=0, sticky="nsew", pady=(10, 0))
         line_box.rowconfigure(0, weight=1)
         line_box.columnconfigure(0, weight=1)
         self.line_list = tk.Listbox(line_box, height=4, exportselection=False, font=("Menlo", 11))
@@ -419,29 +434,39 @@ class AnnotationApp:
         self.line_list.bind("<<ListboxSelect>>", self._on_line_selected)
 
         stats = ttk.LabelFrame(controls, text="Status", padding=8)
-        stats.grid(row=2, column=0, columnspan=2, sticky="nsew", pady=(10, 0))
+        stats.grid(row=3, column=0, sticky="nsew", pady=(10, 0))
         stats.columnconfigure(0, weight=1)
-        stats.columnconfigure(1, weight=1)
         ttk.Label(stats, textvariable=self.summary_var).grid(row=0, column=0, sticky="w")
-        ttk.Label(stats, textvariable=self.preview_mode_var).grid(row=0, column=1, sticky="w")
-        ttk.Label(stats, textvariable=self.status_var, wraplength=760, justify="left").grid(
-            row=1,
+        ttk.Label(stats, textvariable=self.preview_mode_var).grid(row=1, column=0, sticky="w", pady=(4, 0))
+        ttk.Label(stats, textvariable=self.status_var, wraplength=320, justify="left").grid(
+            row=2,
             column=0,
-            columnspan=2,
             sticky="w",
             pady=(6, 0),
         )
-        ttk.Label(stats, textvariable=self.upper_angle_var, font=("Helvetica", 18, "bold")).grid(
-            row=2,
+        ttk.Label(stats, textvariable=self.upper_angle_var, font=("Helvetica", 20, "bold")).grid(
+            row=3,
             column=0,
             sticky="w",
-            pady=(10, 0),
+            pady=(14, 0),
         )
-        ttk.Label(stats, textvariable=self.lower_angle_var, font=("Helvetica", 18, "bold")).grid(
-            row=2,
-            column=1,
+        ttk.Label(stats, textvariable=self.lower_angle_var, font=("Helvetica", 20, "bold")).grid(
+            row=4,
+            column=0,
             sticky="w",
-            pady=(10, 0),
+            pady=(8, 0),
+        )
+        ttk.Label(stats, textvariable=self.jlca_angle_var, font=("Helvetica", 20, "bold")).grid(
+            row=5,
+            column=0,
+            sticky="w",
+            pady=(8, 0),
+        )
+        ttk.Label(stats, textvariable=self.hka_angle_var, font=("Helvetica", 20, "bold")).grid(
+            row=6,
+            column=0,
+            sticky="w",
+            pady=(8, 0),
         )
 
     def _bind_shortcuts(self) -> None:
@@ -457,6 +482,33 @@ class AnnotationApp:
         if explicit_side is not None:
             return explicit_side
         return infer_knee_side_from_sources(self.annotation_path, self.raw_path)
+
+    def _render_style(self) -> str:
+        return self.render_style_var.get()
+
+    def _sync_render_style_button(self) -> None:
+        label = "Clinical" if self._render_style() == RENDER_STYLE_CLINICAL else "Debug"
+        self.render_style_button_var.set(f"Style: {label}")
+
+    def toggle_render_style(self) -> None:
+        if self._render_style() == RENDER_STYLE_CLINICAL:
+            self.render_style_var.set(RENDER_STYLE_DEBUG)
+        else:
+            self.render_style_var.set(RENDER_STYLE_CLINICAL)
+        self._sync_render_style_button()
+        self._refresh_views(reset_view=False)
+
+    def _clear_angle_vars(self) -> None:
+        self.upper_angle_var.set(f"{UPPER_ANGLE_LABEL}: -")
+        self.lower_angle_var.set(f"{LOWER_ANGLE_LABEL}: -")
+        self.jlca_angle_var.set(f"{JLCA_ANGLE_LABEL}: -")
+        self.hka_angle_var.set(f"{HKA_ANGLE_LABEL}: -")
+
+    def _set_angle_vars(self, result: dict) -> None:
+        self.upper_angle_var.set(f"{UPPER_ANGLE_LABEL}: {result['mldfa_angle']:.2f} deg")
+        self.lower_angle_var.set(f"{LOWER_ANGLE_LABEL}: {result['mpta_angle']:.2f} deg")
+        self.jlca_angle_var.set(f"{JLCA_ANGLE_LABEL}: {result['jlca_angle']:.2f} deg")
+        self.hka_angle_var.set(f"{HKA_ANGLE_LABEL}: {result['hka_angle']:.2f} deg")
 
     def _set_side_from_sources(self, *sources: object) -> None:
         side = infer_knee_side_from_sources(*sources)
@@ -659,6 +711,7 @@ class AnnotationApp:
                 prefix=prefix,
                 named_lines=self._named_lines_payload(),
                 side=side,
+                render_style=self._render_style(),
             )
         except Exception as exc:
             messagebox.showerror("Save Error", str(exc))
@@ -666,8 +719,7 @@ class AnnotationApp:
 
         self.annotation_path = paths["annotation"]
         self._refresh_metadata()
-        self.upper_angle_var.set(f"{UPPER_ANGLE_LABEL}: {result['mldfa_angle']:.2f} deg")
-        self.lower_angle_var.set(f"{LOWER_ANGLE_LABEL}: {result['mpta_angle']:.2f} deg")
+        self._set_angle_vars(result)
         self.status_var.set(
             "Saved annotation bundle: "
             f"{paths['annotation'].name}, {paths['point_image'].name}, {paths['line_image'].name}, {paths['combined_image'].name}"
@@ -920,8 +972,7 @@ class AnnotationApp:
         if self.raw_image is None:
             self.annotation_view.clear("Open a raw image")
             self.preview_view.clear("Preview will appear after the required annotations are placed")
-            self.upper_angle_var.set(f"{UPPER_ANGLE_LABEL}: -")
-            self.lower_angle_var.set(f"{LOWER_ANGLE_LABEL}: -")
+            self._clear_angle_vars()
             self.preview_mode_var.set("Preview mode: waiting for annotations")
             return
 
@@ -929,16 +980,14 @@ class AnnotationApp:
 
         if len(self.points) != len(ANNOTATION_POINT_SPECS):
             self.preview_view.clear("Place all 8 points to enable the measurement preview")
-            self.upper_angle_var.set(f"{UPPER_ANGLE_LABEL}: -")
-            self.lower_angle_var.set(f"{LOWER_ANGLE_LABEL}: -")
+            self._clear_angle_vars()
             self.preview_mode_var.set("Preview mode: waiting for all points")
             return
 
         side = self._effective_side()
         if side is None:
             self.preview_view.clear("Choose Side L or R to enable anatomical angle measurement")
-            self.upper_angle_var.set(f"{UPPER_ANGLE_LABEL}: -")
-            self.lower_angle_var.set(f"{LOWER_ANGLE_LABEL}: -")
+            self._clear_angle_vars()
             self.preview_mode_var.set("Preview mode: waiting for side")
             return
 
@@ -951,30 +1000,29 @@ class AnnotationApp:
                 raw_path=self.raw_path,
                 named_lines=named_lines if preview_uses_manual_lines else None,
                 side=side,
+                render_style=self._render_style(),
             )
         except Exception as exc:
             self.preview_view.clear(f"Measurement failed:\n{exc}")
-            self.upper_angle_var.set(f"{UPPER_ANGLE_LABEL}: -")
-            self.lower_angle_var.set(f"{LOWER_ANGLE_LABEL}: -")
+            self._clear_angle_vars()
             self.preview_mode_var.set("Preview mode: error")
             self.status_var.set(f"Measurement preview failed: {exc}")
             return
 
         self.preview_view.set_image(result["combined_image"], reset_view=reset_view)
-        self.upper_angle_var.set(f"{UPPER_ANGLE_LABEL}: {result['mldfa_angle']:.2f} deg")
-        self.lower_angle_var.set(f"{LOWER_ANGLE_LABEL}: {result['mpta_angle']:.2f} deg")
+        self._set_angle_vars(result)
         if preview_uses_manual_lines:
-            self.preview_mode_var.set(f"Preview mode: using manual joint lines, side {side}")
+            self.preview_mode_var.set(f"Preview mode: {self._render_style()}, manual lines, side {side}")
         else:
-            self.preview_mode_var.set(f"Preview mode: provisional line fits, side {side}")
+            self.preview_mode_var.set(f"Preview mode: {self._render_style()}, provisional line fits, side {side}")
 
     def _draw_editor_overlay(self, view: InteractiveImageCanvas) -> None:
         if self.raw_image is None:
             return
 
         tag = view.overlay_tag
-        point_radius_outer = 11
-        point_radius_inner = 8
+        point_radius_outer = 6
+        point_radius_inner = 4
         line_handle_outer = 10
         line_handle_inner = 7
         line_width = 2

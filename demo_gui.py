@@ -11,6 +11,10 @@ import cv2
 from PIL import Image, ImageTk
 
 from measure_angles import (
+    HKA_ANGLE_FULL_NAME,
+    HKA_ANGLE_LABEL,
+    JLCA_ANGLE_FULL_NAME,
+    JLCA_ANGLE_LABEL,
     LOWER_ANGLE_FULL_NAME,
     LOWER_ANGLE_LABEL,
     UPPER_ANGLE_FULL_NAME,
@@ -249,10 +253,14 @@ class MeasurementDemoApp:
         self.status_var = tk.StringVar(value="Select a case or browse files, then click Run.")
         self.upper_angle_var = tk.StringVar(value=f"{UPPER_ANGLE_LABEL}: -")
         self.lower_angle_var = tk.StringVar(value=f"{LOWER_ANGLE_LABEL}: -")
+        self.jlca_angle_var = tk.StringVar(value=f"{JLCA_ANGLE_LABEL}: -")
+        self.hka_angle_var = tk.StringVar(value=f"{HKA_ANGLE_LABEL}: -")
         self.angle_info_var = tk.StringVar(
             value=(
                 f"{UPPER_ANGLE_LABEL} = {UPPER_ANGLE_FULL_NAME}\n"
-                f"{LOWER_ANGLE_LABEL} = {LOWER_ANGLE_FULL_NAME}"
+                f"{LOWER_ANGLE_LABEL} = {LOWER_ANGLE_FULL_NAME}\n"
+                f"{JLCA_ANGLE_LABEL} = {JLCA_ANGLE_FULL_NAME}\n"
+                f"{HKA_ANGLE_LABEL} = {HKA_ANGLE_FULL_NAME}"
             )
         )
 
@@ -365,15 +373,29 @@ class MeasurementDemoApp:
             anchor="w",
         )
         self.lower_label.grid(row=0, column=1, sticky="w")
+        self.jlca_label = tk.Label(
+            stats,
+            textvariable=self.jlca_angle_var,
+            font=("Helvetica", 24, "bold"),
+            anchor="w",
+        )
+        self.jlca_label.grid(row=1, column=0, sticky="w", pady=(4, 0))
+        self.hka_label = tk.Label(
+            stats,
+            textvariable=self.hka_angle_var,
+            font=("Helvetica", 24, "bold"),
+            anchor="w",
+        )
+        self.hka_label.grid(row=1, column=1, sticky="w", pady=(4, 0))
         ttk.Label(stats, textvariable=self.angle_info_var, wraplength=900, justify="left").grid(
-            row=1,
+            row=2,
             column=0,
             columnspan=2,
             sticky="w",
             pady=(6, 0),
         )
         ttk.Label(stats, textvariable=self.status_var, wraplength=900).grid(
-            row=2,
+            row=3,
             column=0,
             columnspan=2,
             sticky="w",
@@ -507,6 +529,8 @@ class MeasurementDemoApp:
         self.result_view.set_image(result["combined_image"])
         self.upper_angle_var.set(f"{result['upper_angle_label']}: {result['mldfa_angle']:.2f} deg")
         self.lower_angle_var.set(f"{result['lower_angle_label']}: {result['mpta_angle']:.2f} deg")
+        self.jlca_angle_var.set(f"{result['jlca_angle_label']}: {result['jlca_angle']:.2f} deg")
+        self.hka_angle_var.set(f"{result['hka_angle_label']}: {result['hka_angle']:.2f} deg")
         self.status_var.set("Measurement complete. You can save the combined result image if needed.")
 
     def save_result(self) -> None:

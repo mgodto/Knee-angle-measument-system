@@ -24,9 +24,20 @@ if errorlevel 1 exit /b 1
 pyinstaller --noconfirm --clean knee_annotation_tool.spec
 if errorlevel 1 exit /b 1
 
+if exist dist\KneeAnnotationTool-windows.zip (
+  del dist\KneeAnnotationTool-windows.zip
+  if errorlevel 1 exit /b 1
+)
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path 'dist\KneeAnnotationTool\*' -DestinationPath 'dist\KneeAnnotationTool-windows.zip' -Force"
+if errorlevel 1 exit /b 1
+
 echo.
 echo Build finished.
-echo Send the whole folder:
+echo Send this zip file:
+echo   dist\KneeAnnotationTool-windows.zip
+echo.
+echo Or send the whole folder:
 echo   dist\KneeAnnotationTool
 echo.
 echo The doctor should run:
