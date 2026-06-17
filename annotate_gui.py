@@ -25,6 +25,7 @@ from measure_angles import (
     measure_from_named_points,
     normalize_name,
     normalize_measurement_side,
+    read_color,
     save_annotation_bundle,
 )
 
@@ -555,8 +556,9 @@ class AnnotationApp:
             return
 
         raw_path = Path(filename)
-        raw_image = cv2.imread(str(raw_path))
-        if raw_image is None:
+        try:
+            raw_image = read_color(raw_path)
+        except Exception:
             messagebox.showerror("Open Error", f"Cannot read image:\n{raw_path}")
             return
 
@@ -591,8 +593,9 @@ class AnnotationApp:
             return
 
         raw_path = Path(annotation["raw_path"])
-        raw_image = cv2.imread(str(raw_path))
-        if raw_image is None:
+        try:
+            raw_image = read_color(raw_path)
+        except Exception:
             messagebox.showerror(
                 "Open Error",
                 f"Cannot read the raw image recorded in the annotation file:\n{raw_path}",

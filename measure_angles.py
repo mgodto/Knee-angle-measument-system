@@ -169,10 +169,27 @@ def resolve_raw_path(point_path: Path, line_path: Path, raw_path: Path | None) -
 
 
 def read_color(path: Path) -> np.ndarray:
-    image = cv2.imread(str(path))
+    path = Path(path)
+    try:
+        encoded = np.frombuffer(path.read_bytes(), dtype=np.uint8)
+    except OSError as exc:
+        raise ValueError(f"Cannot read image: {path}") from exc
+    image = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
     if image is None:
         raise ValueError(f"Cannot read image: {path}")
     return image
+
+
+def write_image(path: Path, image: np.ndarray) -> None:
+    path = Path(path)
+    extension = path.suffix or ".jpg"
+    ok, encoded = cv2.imencode(extension, image)
+    if not ok:
+        raise ValueError(f"Cannot encode image as {extension}: {path}")
+    try:
+        path.write_bytes(encoded.tobytes())
+    except OSError as exc:
+        raise ValueError(f"Cannot write image: {path}") from exc
 
 
 def point_to_array(point: dict | list | tuple | np.ndarray, name: str = "point") -> np.ndarray:
@@ -1328,9 +1345,9 @@ def save_annotation_bundle(
 
     with annotation_path.open("w", encoding="utf-8") as handle:
         json.dump(annotation, handle, indent=2)
-    cv2.imwrite(str(point_path), point_image)
-    cv2.imwrite(str(line_path), line_image)
-    cv2.imwrite(str(combined_path), result["combined_image"])
+    write_image(point_path, point_image)
+    write_image(line_path, line_image)
+    write_image(combined_path, result["combined_image"])
 
     return (
         {
@@ -1433,11 +1450,11 @@ def main() -> None:
     jlca_path = args.out_dir / f"{prefix}_{JLCA_ANGLE_LABEL}.jpg"
     hka_path = args.out_dir / f"{prefix}_{HKA_ANGLE_LABEL}.jpg"
     combined_path = args.out_dir / f"{prefix}_combined.jpg"
-    cv2.imwrite(str(e_path), result["e_image"])
-    cv2.imwrite(str(g_path), result["g_image"])
-    cv2.imwrite(str(jlca_path), result["jlca_image"])
-    cv2.imwrite(str(hka_path), result["hka_image"])
-    cv2.imwrite(str(combined_path), result["combined_image"])
+    write_image(e_path, result["e_image"])
+    write_image(g_path, result["g_image"])
+    write_image(jlca_path, result["jlca_image"])
+    write_image(hka_path, result["hka_image"])
+    write_image(combined_path, result["combined_image"])
 
     print(f"raw image : {result['raw_path']}")
     print(f"side      : {result['side'] or 'unknown'} ({result['angle_side_source']})")

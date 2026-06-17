@@ -23,6 +23,8 @@ from measure_angles import (
     infer_side,
     measure_case,
     normalize_name,
+    read_color,
+    write_image,
 )
 
 
@@ -70,10 +72,10 @@ def discover_measurement_pairs(root: Path) -> list[MeasurementPair]:
 
 
 def read_preview_image(path: Path) -> cv2.typing.MatLike | None:
-    image = cv2.imread(str(path), cv2.IMREAD_REDUCED_COLOR_4)
-    if image is None:
-        image = cv2.imread(str(path))
-    return image
+    try:
+        return read_color(path)
+    except Exception:
+        return None
 
 
 class ZoomableImageCanvas(ttk.Frame):
@@ -435,8 +437,9 @@ class MeasurementDemoApp:
             viewer.clear(empty_text)
             return
 
-        image = cv2.imread(str(path))
-        if image is None:
+        try:
+            image = read_color(path)
+        except Exception:
             viewer.clear(f"Cannot read:\n{path.name}")
             return
         viewer.set_image(image)
@@ -553,9 +556,10 @@ class MeasurementDemoApp:
             return
 
         out_path = Path(filename)
-        ok = cv2.imwrite(str(out_path), self.result_data["combined_image"])
-        if not ok:
-            messagebox.showerror("Save Error", f"Could not save result to {out_path}")
+        try:
+            write_image(out_path, self.result_data["combined_image"])
+        except Exception as exc:
+            messagebox.showerror("Save Error", f"Could not save result to {out_path}\n\n{exc}")
             return
         self.status_var.set(f"Saved result image to {out_path}")
 
