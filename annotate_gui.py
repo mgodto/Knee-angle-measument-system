@@ -385,6 +385,8 @@ class AnnotationApp:
 
         controls = ttk.Frame(body)
         controls.grid(row=0, column=2, sticky="nsew")
+        controls.configure(width=360)
+        controls.grid_propagate(False)
         controls.columnconfigure(0, weight=1)
         controls.rowconfigure(1, weight=1)
         controls.rowconfigure(2, weight=1)
@@ -403,7 +405,13 @@ class AnnotationApp:
             sticky="w",
             padx=(12, 0),
         )
-        ttk.Label(tool_box, textvariable=self.current_item_var, font=("Helvetica", 14, "bold")).grid(
+        ttk.Label(
+            tool_box,
+            textvariable=self.current_item_var,
+            font=("Helvetica", 14, "bold"),
+            wraplength=320,
+            justify="left",
+        ).grid(
             row=1,
             column=0,
             columnspan=2,
@@ -422,7 +430,7 @@ class AnnotationApp:
         point_box.grid(row=1, column=0, sticky="nsew", pady=(10, 0))
         point_box.rowconfigure(0, weight=1)
         point_box.columnconfigure(0, weight=1)
-        self.point_list = tk.Listbox(point_box, height=10, exportselection=False, font=("Menlo", 11))
+        self.point_list = tk.Listbox(point_box, height=10, width=34, exportselection=False, font=("Menlo", 11))
         self.point_list.grid(row=0, column=0, sticky="nsew")
         self.point_list.bind("<<ListboxSelect>>", self._on_point_selected)
 
@@ -430,7 +438,7 @@ class AnnotationApp:
         line_box.grid(row=2, column=0, sticky="nsew", pady=(10, 0))
         line_box.rowconfigure(0, weight=1)
         line_box.columnconfigure(0, weight=1)
-        self.line_list = tk.Listbox(line_box, height=4, exportselection=False, font=("Menlo", 11))
+        self.line_list = tk.Listbox(line_box, height=4, width=34, exportselection=False, font=("Menlo", 11))
         self.line_list.grid(row=0, column=0, sticky="nsew")
         self.line_list.bind("<<ListboxSelect>>", self._on_line_selected)
 

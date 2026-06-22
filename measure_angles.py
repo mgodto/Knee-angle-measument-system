@@ -636,6 +636,79 @@ def line_angle_degrees(vec_a: np.ndarray, vec_b: np.ndarray) -> float:
     return acute_angle_degrees(vec_a, vec_b)
 
 
+def cross_2d(vec_a: np.ndarray, vec_b: np.ndarray) -> float:
+    return float(vec_a[0] * vec_b[1] - vec_a[1] * vec_b[0])
+
+
+def signed_angle_degrees(vec_a: np.ndarray, vec_b: np.ndarray) -> float:
+    a = vec_a / np.linalg.norm(vec_a)
+    b = vec_b / np.linalg.norm(vec_b)
+    return math.degrees(math.atan2(cross_2d(a, b), float(np.dot(a, b))))
+
+
+def medial_screen_x_sign(side: str | None) -> float | None:
+    normalized_side = normalize_measurement_side(side)
+    if normalized_side == "R":
+        return 1.0
+    if normalized_side == "L":
+        return -1.0
+    return None
+
+
+def line_y_at_x(line: LineModel, x: float) -> float:
+    direction = line.direction
+    if abs(float(direction[0])) < 1e-6:
+        return float(line.point[1])
+    t = (float(x) - float(line.point[0])) / float(direction[0])
+    return float(line.point[1] + t * direction[1])
+
+
+def signed_hka_angle_degrees(
+    femur_distal_vec: np.ndarray,
+    tibia_distal_vec: np.ndarray,
+    side: str | None,
+) -> float:
+    magnitude = line_angle_degrees(femur_distal_vec, tibia_distal_vec)
+    medial_sign = medial_screen_x_sign(side)
+    if medial_sign is None or magnitude == 0.0:
+        return magnitude
+
+    signed_rotation = signed_angle_degrees(femur_distal_vec, tibia_distal_vec)
+    varus_positive = -medial_sign * signed_rotation
+    if abs(varus_positive) < 1e-6:
+        return 0.0
+    return math.copysign(magnitude, varus_positive)
+
+
+def signed_jlca_angle_degrees(
+    upper_line: LineModel,
+    lower_line: LineModel,
+    knee_center: np.ndarray,
+    side: str | None,
+    reference_points: np.ndarray,
+) -> float:
+    magnitude = line_angle_degrees(upper_line.direction, lower_line.direction)
+    medial_sign = medial_screen_x_sign(side)
+    if medial_sign is None or magnitude == 0.0:
+        return magnitude
+
+    refs = np.asarray(reference_points, dtype=np.float32).reshape(-1, 2)
+    x_distances = np.abs(refs[:, 0] - float(knee_center[0]))
+    sample_distance = float(np.percentile(x_distances, 75)) if len(x_distances) else 80.0
+    sample_distance = min(max(sample_distance, 40.0), 180.0)
+
+    medial_x = float(knee_center[0] + medial_sign * sample_distance)
+    lateral_x = float(knee_center[0] - medial_sign * sample_distance)
+    medial_gap = line_y_at_x(lower_line, medial_x) - line_y_at_x(upper_line, medial_x)
+    lateral_gap = line_y_at_x(lower_line, lateral_x) - line_y_at_x(upper_line, lateral_x)
+
+    # Varus: medial joint space is narrower and lateral side opens. Valgus is the opposite.
+    varus_positive = lateral_gap - medial_gap
+    if abs(varus_positive) < 1e-6:
+        return 0.0
+    return math.copysign(magnitude, varus_positive)
+
+
 def direction_angle(vec: np.ndarray) -> float:
     return math.atan2(float(vec[1]), float(vec[0]))
 
@@ -960,8 +1033,15 @@ def measure_from_named_points(
 
     e_angle = angle_degrees(upper_axis_vec, upper_joint_ray)
     g_angle = angle_degrees(lower_axis_vec, lower_joint_ray)
-    jlca_angle = line_angle_degrees(upper_line.direction, lower_line.direction)
-    hka_angle = line_angle_degrees(femur_distal_vec, tibia_distal_vec)
+    joint_reference_points = np.vstack([upper_points, lower_points, upper_segment, lower_segment])
+    jlca_angle = signed_jlca_angle_degrees(
+        upper_line,
+        lower_line,
+        knee_center,
+        measurement_side,
+        joint_reference_points,
+    )
+    hka_angle = signed_hka_angle_degrees(femur_distal_vec, tibia_distal_vec, measurement_side)
     jlca_ray_a = choose_line_ray_by_screen_side(upper_line.direction, jlca_screen_side)
     jlca_ray_b = choose_line_ray_by_screen_side(lower_line.direction, jlca_screen_side)
     jlca_ray_a, jlca_ray_b = choose_acute_ray_pair(jlca_ray_a, jlca_ray_b)

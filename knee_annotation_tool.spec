@@ -62,8 +62,8 @@ if sys.platform == "darwin":
         info_plist={
             "CFBundleName": "KneeAnnotationTool",
             "CFBundleDisplayName": "KneeAnnotationTool",
-            "CFBundleShortVersionString": "1.1",
-            "CFBundleVersion": "2",
+            "CFBundleShortVersionString": "1.2",
+            "CFBundleVersion": "3",
             "NSHighResolutionCapable": True,
             "LSMinimumSystemVersion": "11.0",
         },
