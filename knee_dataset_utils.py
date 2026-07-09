@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -62,10 +63,57 @@ def build_raw_image_index(raw_roots: list[Path] | tuple[Path, ...]) -> dict[str,
     return index
 
 
-def raw_candidate_score(candidate: RawCandidate, case_id: str) -> tuple[int, str]:
+def common_prefix_len(left: tuple[str, ...], right: tuple[str, ...]) -> int:
+    count = 0
+    for left_part, right_part in zip(left, right):
+        if left_part != right_part:
+            break
+        count += 1
+    return count
+
+
+def normalized_path_parts(value: object) -> tuple[str, ...]:
+    text = unicodedata.normalize("NFKC", str(value)).replace("\\", "/").lower()
+    return tuple(part for part in text.split("/") if part)
+
+
+def common_suffix_len(left: tuple[str, ...], right: tuple[str, ...]) -> int:
+    count = 0
+    for left_part, right_part in zip(reversed(left), reversed(right)):
+        if left_part != right_part:
+            break
+        count += 1
+    return count
+
+
+def raw_reference_score(candidate: RawCandidate, annotation: dict | None) -> int:
+    if annotation is None:
+        return 0
+    reference = annotation.get("raw_path") or annotation.get("source_raw_path")
+    if not reference:
+        return 0
+    reference_parts = normalized_path_parts(reference)
+    candidate_parts = normalized_path_parts(candidate.path.as_posix())
+    suffix_len = common_suffix_len(reference_parts, candidate_parts)
+    if suffix_len == 0:
+        return 0
+    return -1000 * suffix_len
+
+
+def raw_candidate_score(
+    candidate: RawCandidate,
+    case_id: str,
+    annotation_path: Path | None = None,
+    annotation: dict | None = None,
+) -> tuple[int, str]:
     path_text = str(candidate.path)
     parts = set(candidate.path.parts)
-    score = 0
+    score = raw_reference_score(candidate, annotation)
+    if annotation_path is not None:
+        annotation_parent = annotation_path.parent
+        if annotation_parent == candidate.path.parent or annotation_parent in candidate.path.parents:
+            score -= 1000
+        score -= common_prefix_len(annotation_parent.parts, candidate.path.parent.parts) * 3
     if "images/line_point" in path_text:
         score += 0
     elif "images/raw_line_point" in path_text:
@@ -93,7 +141,7 @@ def resolve_raw_candidate(annotation_path: Path, annotation: dict, index: dict[s
     if not candidates:
         raise FileNotFoundError(f"No local raw image matched {raw_filename} at {image_width}x{image_height}")
 
-    candidates.sort(key=lambda candidate: raw_candidate_score(candidate, case_id))
+    candidates.sort(key=lambda candidate: raw_candidate_score(candidate, case_id, annotation_path, annotation))
     return candidates[0], len(candidates)
 
 
@@ -112,6 +160,41 @@ def annotation_keypoints(annotation: dict) -> dict[str, tuple[float, float]]:
     return keypoints
 
 
+MANIFEST_PATH_FIELDS = (
+    "annotation_path",
+    "raw_path",
+    "point_path",
+    "line_path",
+    "combined_path",
+)
+
+
+def resolve_manifest_path_value(value: str, manifest_dir: Path) -> str:
+    if not value:
+        return value
+    path = Path(value)
+    if path.is_absolute() or path.exists():
+        return value
+    manifest_relative = manifest_dir / path
+    if manifest_relative.exists():
+        return manifest_relative.as_posix()
+    return value
+
+
 def load_manifest(path: Path) -> list[dict[str, str]]:
     with path.open("r", encoding="utf-8", newline="") as handle:
-        return list(csv.DictReader(handle))
+        rows = list(csv.DictReader(handle))
+    manifest_dir = path.parent
+    for row in rows:
+        for field in MANIFEST_PATH_FIELDS:
+            if field in row:
+                row[field] = resolve_manifest_path_value(row[field], manifest_dir)
+    return rows
+
+
+def dataset_manifest_path(dataset_dir: Path | None, manifest_path: Path | None, default_manifest: Path) -> Path:
+    if dataset_dir is not None:
+        return dataset_dir / "manifest.csv"
+    if manifest_path is not None:
+        return manifest_path
+    return default_manifest

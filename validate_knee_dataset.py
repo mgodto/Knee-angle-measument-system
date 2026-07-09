@@ -8,7 +8,7 @@ from pathlib import Path
 
 import cv2
 
-from knee_dataset_utils import annotation_keypoints, load_manifest, read_json
+from knee_dataset_utils import annotation_keypoints, dataset_manifest_path, load_manifest, read_json
 from measure_angles import ANNOTATION_LINE_NAMES, ANNOTATION_POINT_NAMES, measure_from_named_points
 
 
@@ -79,10 +79,12 @@ def validate_manifest(manifest_path: Path) -> tuple[list[str], Counter]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Validate resolved knee X-ray training samples.")
-    parser.add_argument("--manifest", type=Path, default=Path("outputs/knee_dataset_manifest.csv"))
+    parser.add_argument("--manifest", type=Path, default=None)
+    parser.add_argument("--dataset-dir", type=Path, help="Dataset folder that contains manifest.csv.")
     args = parser.parse_args()
 
-    errors, counters = validate_manifest(args.manifest)
+    manifest_path = dataset_manifest_path(args.dataset_dir, args.manifest, Path("outputs/knee_dataset_manifest.csv"))
+    errors, counters = validate_manifest(manifest_path)
     print(f"Samples: {counters['samples']}")
     print(f"Sides: L={counters['side_L']}, R={counters['side_R']}")
     print(f"Cases: {len([key for key in counters if key.startswith('case_')])}")

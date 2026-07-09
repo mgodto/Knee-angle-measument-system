@@ -20,11 +20,91 @@ python validate_knee_dataset.py --manifest outputs/knee_dataset_manifest.csv
 python train_keypoint_baseline.py --manifest outputs/knee_dataset_manifest.csv
 ```
 
+Build the integrated legacy + 2026-07-06 dataset. This skips annotations whose
+original raw X-ray image is not present locally and writes a report for them:
+
+```bash
+python build_dataset_manifest.py \
+  --annotation-dir images/Knee_Xray_annotations images/20260706new \
+  --raw-root images/line_point images/raw_line_point images/point_only images/20260706new "images/20260706new/001-027 raw" \
+  --output outputs/knee_dataset_manifest_combined.csv \
+  --inventory-output outputs/knee_dataset_inventory_combined.csv \
+  --missing-output outputs/knee_dataset_missing_raw_combined.csv \
+  --skip-missing-raw \
+  --skip-invalid
+
+python process_annotation_dataset.py \
+  --manifest outputs/knee_dataset_manifest_combined.csv \
+  --output-dir images/annotation_processed_combined \
+  --no-overlays
+
+python organize_implant_dataset.py \
+  --manifest images/annotation_processed_combined/processed_manifest.csv \
+  --output-root images/annotation_dataset_by_implant
+
+python validate_knee_dataset.py \
+  --manifest images/annotation_processed_combined/processed_manifest.csv
+
+python validate_knee_dataset.py \
+  --dataset-dir "images/annotation_dataset_by_implant/未加入人工關節"
+
+python validate_knee_dataset.py \
+  --dataset-dir "images/annotation_dataset_by_implant/加入人工關節"
+```
+
+Add `--clean` to `organize_implant_dataset.py` when rebuilding the organized
+folders from scratch.
+
+The organized review/training folders are:
+
+- `images/annotation_dataset_by_implant/未加入人工關節`
+- `images/annotation_dataset_by_implant/加入人工關節`
+
+Each sample is stored under `samples/<sample_id>/` with:
+
+- `raw.jpg`
+- `annotation.json`
+- `point.jpg`
+- `line.jpg`
+- `combined.jpg`
+
+The processing step also writes focused manifests for model experiments:
+
+- `images/annotation_processed_combined/processed_manifest_bone.csv`
+- `images/annotation_processed_combined/processed_manifest_tka.csv`
+- `images/annotation_processed_combined/processed_manifest_unknown.csv`
+- `images/annotation_processed_combined/processed_manifest_bone_or_legacy_unknown.csv`
+
+For the integrated non-TKA knee model, use the `未加入人工關節` folder.
+It contains confirmed new `bone` annotations plus the legacy dataset:
+
+```bash
+python train_keypoint_baseline.py \
+  --dataset-dir "images/annotation_dataset_by_implant/未加入人工關節" \
+  --output-dir outputs/knee_keypoint_bone_baseline
+```
+
+For the TKA model, use:
+
+```bash
+python train_keypoint_baseline.py \
+  --dataset-dir "images/annotation_dataset_by_implant/加入人工關節" \
+  --output-dir outputs/knee_keypoint_tka_baseline
+```
+
+If you need a stricter experiment with only confirmed new `bone` annotations, use:
+
+```bash
+python train_keypoint_baseline.py \
+  --manifest images/annotation_processed_combined/processed_manifest_bone.csv \
+  --output-dir outputs/knee_keypoint_bone_only_baseline
+```
+
 Visualize predictions from a trained checkpoint:
 
 ```bash
 python visualize_keypoint_predictions.py \
-  --manifest outputs/knee_dataset_manifest.csv \
+  --dataset-dir "images/annotation_dataset_by_implant/未加入人工關節" \
   --checkpoint outputs/knee_keypoint_baseline/best.pt \
   --output-dir outputs/knee_keypoint_visualizations \
   --split val \

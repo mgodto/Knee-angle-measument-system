@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 import torch
 
-from knee_dataset_utils import annotation_keypoints, load_manifest, read_json
+from knee_dataset_utils import annotation_keypoints, dataset_manifest_path, load_manifest, read_json
 from measure_angles import measure_from_named_points
 from train_keypoint_baseline import (
     KEYPOINT_NAMES,
@@ -171,7 +171,8 @@ def select_rows(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Visualize baseline keypoint predictions on raw knee X-rays.")
-    parser.add_argument("--manifest", type=Path, default=Path("outputs/knee_dataset_manifest.csv"))
+    parser.add_argument("--manifest", type=Path, default=None)
+    parser.add_argument("--dataset-dir", type=Path, help="Dataset folder that contains manifest.csv.")
     parser.add_argument("--checkpoint", type=Path, default=Path("outputs/knee_keypoint_baseline/best.pt"))
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/knee_keypoint_visualizations"))
     parser.add_argument("--split", choices=("val", "train", "all"), default="val")
@@ -189,7 +190,8 @@ def main() -> None:
     image_height = int(checkpoint["image_height"])
     stride = int(checkpoint["stride"])
 
-    rows = load_manifest(args.manifest)
+    manifest_path = dataset_manifest_path(args.dataset_dir, args.manifest, Path("outputs/knee_dataset_manifest.csv"))
+    rows = load_manifest(manifest_path)
     selected_rows = select_rows(rows, args.split, args.num_folds, args.fold, args.seed, args.sample_id, args.max_images)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     metrics_path = args.output_dir / "prediction_metrics.csv"

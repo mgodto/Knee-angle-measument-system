@@ -17,7 +17,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 
-from knee_dataset_utils import annotation_keypoints, load_manifest, read_json
+from knee_dataset_utils import annotation_keypoints, dataset_manifest_path, load_manifest, read_json
 from measure_angles import ANNOTATION_POINT_NAMES, measure_from_named_points
 
 
@@ -276,7 +276,8 @@ def format_metric(value: float, precision: int, suffix: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train a small heatmap baseline for knee X-ray keypoint detection.")
-    parser.add_argument("--manifest", type=Path, default=Path("outputs/knee_dataset_manifest.csv"))
+    parser.add_argument("--manifest", type=Path, default=None)
+    parser.add_argument("--dataset-dir", type=Path, help="Dataset folder that contains manifest.csv.")
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/knee_keypoint_baseline"))
     parser.add_argument("--image-width", type=int, default=256)
     parser.add_argument("--image-height", type=int, default=320)
@@ -297,6 +298,7 @@ def main() -> None:
         raise ValueError("--image-width and --image-height must be divisible by --stride")
     set_seed(args.seed)
     device = select_device(args.device)
+    args.manifest = dataset_manifest_path(args.dataset_dir, args.manifest, Path("outputs/knee_dataset_manifest.csv"))
     rows = load_manifest(args.manifest)
     if args.max_samples:
         rows = rows[: args.max_samples]

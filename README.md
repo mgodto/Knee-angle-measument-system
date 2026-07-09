@@ -30,14 +30,19 @@ To create a portable macOS app for another user, build the PyInstaller app on ma
 The portable output will be:
 
 ```text
-dist/KneeAnnotationTool.app
+KneeAnnotationTool-macOS.zip
 ```
 
-Send `dist/KneeAnnotationTool.app`, not the development launcher at the project root. The standalone app writes exported annotations to:
+Send `KneeAnnotationTool-macOS.zip`, not the development launcher at the project root. This zip intentionally contains the same `dist/` folder layout as the previous working package. The standalone app writes exported annotations to:
 
 ```text
 ~/Documents/Knee_Xray_annotations
 ```
+
+The build script removes `.DS_Store`, AppleDouble `._*` files, and `__MACOSX`
+folders before zipping, then checks the zip contents. If AppleDouble metadata is
+still present, the build fails so the package is not sent with files that can
+break macOS signature verification after extraction.
 
 If macOS blocks the app because it was downloaded from the internet, right-click the app and choose `Open`.
 

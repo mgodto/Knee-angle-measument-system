@@ -50,6 +50,19 @@ def is_double_leg_sample(sample_id: str) -> bool:
     return "RL" in sample_id.upper()
 
 
+def paired_samples(row: dict[str, str], pair_stats: dict[str, list[dict[str, object]]]) -> list[dict[str, object]]:
+    sample_id = row["sample_id"]
+    return [
+        item
+        for item in pair_stats.get(row["raw_path"], [])
+        if item.get("sample_id") != sample_id
+    ]
+
+
+def needs_horizontal_crop(row: dict[str, str], pair_stats: dict[str, list[dict[str, object]]]) -> bool:
+    return is_double_leg_sample(row["sample_id"]) or bool(paired_samples(row, pair_stats))
+
+
 def relative_to_cwd(path: Path) -> str:
     try:
         return path.relative_to(Path.cwd()).as_posix()
@@ -75,14 +88,11 @@ def collect_annotation_xy(annotation: dict) -> tuple[np.ndarray, np.ndarray]:
 def build_pair_stats(rows: list[dict[str, str]]) -> dict[str, list[dict[str, object]]]:
     paired: dict[str, list[dict[str, object]]] = defaultdict(list)
     for row in rows:
-        sample_id = row["sample_id"]
-        if not is_double_leg_sample(sample_id):
-            continue
         annotation = read_json(Path(row["annotation_path"]))
         xs, _ys = collect_annotation_xy(annotation)
         paired[row["raw_path"]].append(
             {
-                "sample_id": sample_id,
+                "sample_id": row["sample_id"],
                 "side": row.get("side", ""),
                 "median_x": float(np.median(xs)),
                 "min_x": float(np.min(xs)),
@@ -100,7 +110,7 @@ def choose_crop_box(
     pair_stats: dict[str, list[dict[str, object]]],
 ) -> CropBox:
     sample_id = row["sample_id"]
-    if not is_double_leg_sample(sample_id):
+    if not needs_horizontal_crop(row, pair_stats):
         return CropBox(0, 0, image_width, image_height, "already_single_leg")
 
     xs, _ys = collect_annotation_xy(annotation)
@@ -110,12 +120,7 @@ def choose_crop_box(
     bbox_pad = max(180, int(round(image_width * 0.08)))
     boundary_pad = max(80, int(round(image_width * 0.035)))
 
-    paired = pair_stats.get(row["raw_path"], [])
-    other_medians = [
-        float(item["median_x"])
-        for item in paired
-        if item.get("sample_id") != sample_id
-    ]
+    other_medians = [float(item["median_x"]) for item in paired_samples(row, pair_stats)]
     if other_medians:
         other_median = float(np.median(other_medians))
         separator = (target_median + other_median) / 2.0
@@ -129,11 +134,11 @@ def choose_crop_box(
             desired_x1 = int(math.ceil(separator + boundary_pad))
             required_x1 = int(math.ceil(max_x + bbox_pad))
             x1 = min(image_width, max(desired_x1, required_x1))
-        method = "paired_rl_horizontal_crop"
+        method = "paired_horizontal_crop"
     else:
         x0 = max(0, int(math.floor(min_x - bbox_pad)))
         x1 = min(image_width, int(math.ceil(max_x + bbox_pad)))
-        method = "bbox_rl_horizontal_crop"
+        method = "bbox_horizontal_crop"
 
     if x1 <= x0:
         raise ValueError(f"Invalid crop for {sample_id}: x0={x0}, x1={x1}")
@@ -203,6 +208,13 @@ def assert_annotation_in_bounds(sample_id: str, annotation: dict) -> None:
 def write_image(path: Path, image: np.ndarray) -> None:
     if not cv2.imwrite(str(path), image, JPEG_PARAMS):
         raise ValueError(f"Failed to write image: {path}")
+
+
+def write_rows(path: Path, fieldnames: list[str], rows: list[dict[str, str]]) -> None:
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 def render_processed_images(
@@ -283,7 +295,11 @@ def process_dataset(input_manifest: Path, output_dir: Path, render_overlays: boo
 
         processed_row = {
             "sample_id": sample_id,
-            "case_id": extract_case_id(sample_id),
+            "case_id": row.get("case_id") or extract_case_id(sample_id),
+            "source_dataset": row.get("source_dataset", ""),
+            "dataset_group": row.get("dataset_group", ""),
+            "implant_status": row.get("implant_status", ""),
+            "study_phase": row.get("study_phase", ""),
             "side": str(adjusted.get("side", "")),
             "annotation_path": relative_to_cwd(annotation_output_path),
             "raw_path": relative_to_cwd(raw_output_path),
@@ -337,16 +353,50 @@ def process_dataset(input_manifest: Path, output_dir: Path, render_overlays: boo
         "is_cropped",
     ]
     manifest_path = output_dir / "processed_manifest.csv"
-    with manifest_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=manifest_fields)
-        writer.writeheader()
-        writer.writerows(processed_rows)
+    write_rows(manifest_path, manifest_fields, processed_rows)
+
+    if any(row.get("implant_status") for row in processed_rows):
+        confirmed_bone_rows = [
+            row for row in processed_rows if row.get("implant_status") == "bone"
+        ]
+        confirmed_tka_rows = [
+            row for row in processed_rows if row.get("implant_status") == "TKA"
+        ]
+        unknown_rows = [
+            row for row in processed_rows if row.get("implant_status") == "unknown"
+        ]
+        bone_or_legacy_unknown_rows = [
+            row
+            for row in processed_rows
+            if row.get("implant_status") == "bone"
+            or (
+                row.get("implant_status") == "unknown"
+                and row.get("dataset_group") == "legacy"
+            )
+        ]
+        write_rows(
+            output_dir / "processed_manifest_bone.csv",
+            manifest_fields,
+            confirmed_bone_rows,
+        )
+        write_rows(
+            output_dir / "processed_manifest_tka.csv",
+            manifest_fields,
+            confirmed_tka_rows,
+        )
+        write_rows(
+            output_dir / "processed_manifest_unknown.csv",
+            manifest_fields,
+            unknown_rows,
+        )
+        write_rows(
+            output_dir / "processed_manifest_bone_or_legacy_unknown.csv",
+            manifest_fields,
+            bone_or_legacy_unknown_rows,
+        )
 
     summary_path = output_dir / "crop_summary.csv"
-    with summary_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(crop_rows[0].keys()))
-        writer.writeheader()
-        writer.writerows(crop_rows)
+    write_rows(summary_path, list(crop_rows[0].keys()), crop_rows)
 
     return processed_rows
 
@@ -369,6 +419,11 @@ def main() -> None:
     print(f"Wrote {len(rows)} processed samples to {args.output_dir}")
     print(f"Cropped double-leg samples: {cropped}")
     print(f"Processed manifest: {args.output_dir / 'processed_manifest.csv'}")
+    if any(row.get("implant_status") for row in rows):
+        print(f"Confirmed bone manifest: {args.output_dir / 'processed_manifest_bone.csv'}")
+        print(f"Confirmed TKA manifest: {args.output_dir / 'processed_manifest_tka.csv'}")
+        print(f"Unknown implant-status manifest: {args.output_dir / 'processed_manifest_unknown.csv'}")
+        print(f"Bone + legacy unknown manifest: {args.output_dir / 'processed_manifest_bone_or_legacy_unknown.csv'}")
     print(f"Crop summary: {args.output_dir / 'crop_summary.csv'}")
 
 
