@@ -36,6 +36,8 @@ app bundle; **標準モデルに戻す** clears the override. The GUI talks only
 to `knee_model_runtime.py`, so swapping a compatible checkpoint does not require
 a GUI change. With `version: "auto"`, the displayed version is taken from the
 checkpoint's optional `model_version`, or from its filename and epoch metadata.
+The bundled default is `20260712-bone-final-v1`, trained for confirmed
+non-arthroplasty bone images. It is not the TKA-cohort model.
 
 The current `small_heatmap_v1` adapter accepts weights only when the model
 architecture, preprocessing, and 12-keypoint order are compatible. A future
@@ -47,8 +49,9 @@ weights are file-only replacements in the current package.
 Important current scope limitations:
 
 - DICOM and un-cropped bilateral X-rays are not supported yet.
-- The bundled baseline checkpoint is a research model. Its recorded validation
-  errors are high, so every landmark and angle must be reviewed by a doctor.
+- The bundled confirmed-bone checkpoint is a research model with internal
+  case-level 5-fold cross-validation only. Every landmark and angle must still
+  be reviewed by a doctor, especially on bilateral or contralateral anatomy.
 - This software is not a cleared medical device and must not be used as the sole
   basis for diagnosis or treatment.
 
@@ -80,10 +83,12 @@ then runs a real image-to-JSON/PNG CPU smoke test from the frozen executable in
 a stripped environment. macOS output also includes a symlink-preserving
 `dist/KneeXrayMeasurement-macOS-arm64.zip`.
 
-The model binary is intentionally ignored by Git. The current research artifact
-has SHA-256 `f4551e22eb9a7eb38e116d229a1fdfbf345633c60346536012ec53f92d70ad8e`.
-Copy the intended reviewed checkpoint to `models/current.pt` before building.
-The scripts fail closed if it is absent or incompatible.
+The reviewed bundled checkpoint is versioned at `models/current.pt`; other
+training and candidate model binaries remain ignored by Git. The current
+research artifact is `20260712-bone-final-v1` and has SHA-256
+`000a4d09b61f64106a285b4d9fd8211236f0127462d23d6a9376d421002cdbab`.
+Replace that file only with a reviewed compatible checkpoint. The build scripts
+fail closed if it is absent or incompatible.
 
 The generated macOS app is ad-hoc signed for local testing. A release sent to
 doctors still needs an organization Developer ID signature and notarization;

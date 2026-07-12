@@ -504,7 +504,7 @@ class CheckpointTests(unittest.TestCase):
 
     def test_current_checkpoint_end_to_end_when_available(self) -> None:
         checkpoint = load_app_config().model.checkpoint
-        image_path = Path("images/annotation_processed_combined/001L_raw.jpg")
+        image_path = Path("images/annotation_processed_combined/015R_pre_bone_raw.jpg")
         if not checkpoint.is_file() or not image_path.is_file():
             self.skipTest("Local ignored checkpoint/test image is not available")
         try:
@@ -514,13 +514,14 @@ class CheckpointTests(unittest.TestCase):
 
         adapter = SmallHeatmapV1Adapter(load_app_config().model)
         adapter.load()
-        result: AnalysisResult = KneeAnalysisService(adapter).analyze_path(image_path)
+        result: AnalysisResult = KneeAnalysisService(adapter).analyze_path(image_path, requested_side="R")
         self.assertEqual(len(result.prediction.peak_scores), 12)
+        self.assertEqual(result.side, "R")
         self.assertEqual(result.prediction.model_info.checkpoint_sha256, sha256_file(checkpoint))
+        self.assertEqual(result.prediction.model_info.checkpoint_schema_version, 1)
+        self.assertEqual(result.prediction.model_info.decoder_id, "local_centroid_3x3_residual_v1")
         for key in ("mldfa_angle", "mpta_angle", "jlca_angle", "hka_angle"):
             self.assertTrue(math.isfinite(float(result.measurement[key])))
-        self.assertTrue(any("MPTA=" in warning for warning in result.warnings))
-        self.assertTrue(any("JLCA" in warning for warning in result.warnings))
 
 
 if __name__ == "__main__":

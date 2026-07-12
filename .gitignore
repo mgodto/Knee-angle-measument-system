@@ -29,6 +29,7 @@ dist/
 *.msi
 *.zip
 *.pt
+!models/current.pt
 *.pth
 runs/
 checkpoints/

@@ -23,6 +23,9 @@ CHECKPOINT_SCHEMA_VERSION = 1
 ARCHITECTURE_ID = "small_heatmap_v1"
 ADAPTER_ID = "small_heatmap_v1"
 PREPROCESSING_ID = "grayscale_resize_percentile_1_99_v1"
+HARD_ARGMAX_DECODER_ID = "hard_argmax_v1"
+LOCAL_CENTROID_DECODER_ID = "local_centroid_3x3_residual_v1"
+SUPPORTED_DECODER_IDS = (HARD_ARGMAX_DECODER_ID, LOCAL_CENTROID_DECODER_ID)
 KEYPOINT_NAMES = (
     *ANNOTATION_POINT_NAMES,
     "upper_line_p1",
@@ -117,17 +120,30 @@ def decode_heatmaps_for_shape(
     image_width: int,
     image_height: int,
     stride: int,
+    decoder_id: str = HARD_ARGMAX_DECODER_ID,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Decode heatmaps to original-image pixel coordinates and peak scores."""
 
+    if decoder_id not in SUPPORTED_DECODER_IDS:
+        raise ValueError(f"Unsupported heatmap decoder: {decoder_id}")
     heatmaps = torch.sigmoid(logits).detach().cpu().numpy()
     coords = np.zeros((len(KEYPOINT_NAMES), 2), dtype=np.float32)
     scores = np.zeros((len(KEYPOINT_NAMES),), dtype=np.float32)
     for idx, heatmap in enumerate(heatmaps):
         flat_index = int(np.argmax(heatmap))
         y, x = np.unravel_index(flat_index, heatmap.shape)
-        image_x = float(x * stride)
-        image_y = float(y * stride)
+        refined_x = float(x)
+        refined_y = float(y)
+        if decoder_id == LOCAL_CENTROID_DECODER_ID and 0 < x < heatmap.shape[1] - 1 and 0 < y < heatmap.shape[0] - 1:
+            patch = heatmap[y - 1 : y + 2, x - 1 : x + 2]
+            weights = np.maximum(patch - float(patch.min()), 0.0)
+            weight_sum = float(weights.sum())
+            if float(patch.max() - patch.min()) > 1e-6 and weight_sum > 1e-12:
+                offsets = np.array([-1.0, 0.0, 1.0], dtype=np.float32)
+                refined_x += float((weights * offsets[None, :]).sum() / weight_sum)
+                refined_y += float((weights * offsets[:, None]).sum() / weight_sum)
+        image_x = refined_x * stride
+        image_y = refined_y * stride
         coords[idx, 0] = image_x * float(original_width) / image_width
         coords[idx, 1] = image_y * float(original_height) / image_height
         scores[idx] = float(heatmap[y, x])
@@ -140,6 +156,7 @@ def decode_heatmaps(
     image_width: int,
     image_height: int,
     stride: int,
+    decoder_id: str = HARD_ARGMAX_DECODER_ID,
 ) -> np.ndarray:
     coords, _scores = decode_heatmaps_for_shape(
         logits,
@@ -148,6 +165,7 @@ def decode_heatmaps(
         image_width=image_width,
         image_height=image_height,
         stride=stride,
+        decoder_id=decoder_id,
     )
     return coords
 

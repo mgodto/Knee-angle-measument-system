@@ -6,19 +6,24 @@ Place the validated `small_heatmap_v1` checkpoint at:
 models/current.pt
 ```
 
-The binary is intentionally excluded from Git. The current research checkpoint
-used during development has:
+`models/current.pt` is the only model binary versioned with the application;
+training outputs and candidate weights remain excluded from Git. The bundled
+default is the confirmed-bone research checkpoint for images without an
+artificial joint:
 
 ```text
-SHA-256  f4551e22eb9a7eb38e116d229a1fdfbf345633c60346536012ec53f92d70ad8e
-epoch    78
+version  20260712-bone-final-v1
+scope    confirmed-bone
+SHA-256  000a4d09b61f64106a285b4d9fd8211236f0127462d23d6a9376d421002cdbab
+epoch    50
 input    256 x 320
 stride   4
+decoder  local_centroid_3x3_residual_v1
+schema   1
 ```
 
 Run `python validate_app_model.py` after replacing it. Compatible state-dict
 weights must keep the same architecture, preprocessing contract, and 12-point
-schema. The bundled legacy checkpoint is allowed only through the reviewed
-release configuration. External replacements must use schema 1 with the explicit
-checkpoint/architecture/preprocessing manifest produced by the current
-`train_keypoint_baseline.py`.
+schema. Legacy checkpoints are disabled in the release configuration. External
+replacements must use schema 1 with the explicit checkpoint, architecture,
+preprocessing, and decoder manifest produced by the current training pipeline.

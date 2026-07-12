@@ -35,13 +35,13 @@ python -m unittest discover -s tests -v
 if errorlevel 1 exit /b 1
 python validate_app_model.py
 if errorlevel 1 exit /b 1
-python knee_measurement_app.py --smoke-test-image images\annotation_processed_combined\001L_raw.jpg --side L
+python knee_measurement_app.py --smoke-test-image images\annotation_processed_combined\015R_pre_bone_raw.jpg --side R
 if errorlevel 1 exit /b 1
 pyinstaller --noconfirm --clean knee_measurement_app.spec
 if errorlevel 1 exit /b 1
 dist\KneeXrayMeasurement\KneeXrayMeasurement.exe --validate-model
 if errorlevel 1 exit /b 1
-dist\KneeXrayMeasurement\KneeXrayMeasurement.exe --smoke-test-image images\annotation_processed_combined\001L_raw.jpg --side L
+dist\KneeXrayMeasurement\KneeXrayMeasurement.exe --smoke-test-image images\annotation_processed_combined\015R_pre_bone_raw.jpg --side R
 if errorlevel 1 exit /b 1
 powershell -NoProfile -Command "Compress-Archive -Force -Path 'dist\KneeXrayMeasurement' -DestinationPath 'dist\KneeXrayMeasurement-Windows-x64.zip'"
 if errorlevel 1 exit /b 1

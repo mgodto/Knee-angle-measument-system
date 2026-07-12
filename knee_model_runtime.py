@@ -124,6 +124,7 @@ class ModelInfo:
     preprocessing_id: str
     metadata_source: str
     training_manifest_sha256: str | None
+    decoder_id: str = "hard_argmax_v1"
 
     @property
     def short_hash(self) -> str:
@@ -396,6 +397,7 @@ class SmallHeatmapV1Adapter:
         self._image_width = 0
         self._image_height = 0
         self._stride = 0
+        self._decoder_id = "hard_argmax_v1"
 
     @property
     def info(self) -> ModelInfo:
@@ -411,7 +413,13 @@ class SmallHeatmapV1Adapter:
         try:
             import torch
 
-            from knee_keypoint_model import KEYPOINT_NAMES, SmallHeatmapNet, select_device
+            from knee_keypoint_model import (
+                HARD_ARGMAX_DECODER_ID,
+                KEYPOINT_NAMES,
+                SUPPORTED_DECODER_IDS,
+                SmallHeatmapNet,
+                select_device,
+            )
         except ImportError as exc:
             raise ModelLoadError(
                 "アプリに必要な推論ライブラリが含まれていません。管理者にお問い合わせください。"
@@ -455,6 +463,7 @@ class SmallHeatmapV1Adapter:
         architecture_id = str(checkpoint.get("architecture_id", self.ADAPTER_ID))
         adapter_id = str(checkpoint.get("adapter_id", self.ADAPTER_ID))
         preprocessing_id = str(checkpoint.get("preprocessing_id", PREPROCESSING_ID))
+        decoder_id = str(checkpoint.get("decoder_id", HARD_ARGMAX_DECODER_ID))
         if checkpoint_schema not in {0, CHECKPOINT_SCHEMA_VERSION}:
             raise ModelLoadError(
                 f"未対応のAIモデル形式です（{checkpoint_schema}）。必要なバージョン：{CHECKPOINT_SCHEMA_VERSION}。"
@@ -472,6 +481,8 @@ class SmallHeatmapV1Adapter:
             raise ModelLoadError(
                 f"前処理 '{preprocessing_id}' は必要な形式 '{PREPROCESSING_ID}' と一致しません。"
             )
+        if decoder_id not in SUPPORTED_DECODER_IDS:
+            raise ModelLoadError(f"座標デコーダー '{decoder_id}' には対応していません。")
         metadata_source = "checkpoint_manifest" if checkpoint_schema else "legacy_assumed_contract"
 
         model = SmallHeatmapNet(out_channels=len(EXPECTED_KEYPOINT_NAMES)).to(device)
@@ -532,6 +543,7 @@ class SmallHeatmapV1Adapter:
                 if checkpoint.get("training_manifest_sha256")
                 else None
             ),
+            decoder_id=decoder_id,
         )
 
         # Atomic activation: keep the previous model untouched until all checks pass.
@@ -541,6 +553,7 @@ class SmallHeatmapV1Adapter:
         self._image_width = image_width
         self._image_height = image_height
         self._stride = stride
+        self._decoder_id = decoder_id
         self._info = info
         return info
 
@@ -564,6 +577,7 @@ class SmallHeatmapV1Adapter:
                 image_width=self._image_width,
                 image_height=self._image_height,
                 stride=self._stride,
+                decoder_id=self._decoder_id,
             )
         except Exception as exc:
             raise InferenceError(f"AI解析に失敗しました：{exc}") from exc

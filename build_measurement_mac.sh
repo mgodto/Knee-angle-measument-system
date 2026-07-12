@@ -21,7 +21,7 @@ python -m pip install -r requirements-app.txt
 python -m pip check
 python -m unittest discover -s tests -v
 python validate_app_model.py
-python knee_measurement_app.py --smoke-test-image images/annotation_processed_combined/001L_raw.jpg --side L
+python knee_measurement_app.py --smoke-test-image images/annotation_processed_combined/015R_pre_bone_raw.jpg --side R
 export PYINSTALLER_CONFIG_DIR="$PWD/.pyinstaller-cache"
 export KNEE_TARGET_ARCH="arm64"
 pyinstaller --noconfirm --clean knee_measurement_app.spec
@@ -30,7 +30,7 @@ smoke_home="$(mktemp -d)"
 trap 'rm -rf "$smoke_home"' EXIT
 env -i HOME="$smoke_home" PATH="/usr/bin:/bin" TMPDIR="${TMPDIR:-/tmp}" \
   "$PWD/dist/KneeXrayMeasurement.app/Contents/MacOS/KneeXrayMeasurement" \
-  --smoke-test-image "$PWD/images/annotation_processed_combined/001L_raw.jpg" --side L
+  --smoke-test-image "$PWD/images/annotation_processed_combined/015R_pre_bone_raw.jpg" --side R
 codesign --verify --deep --strict dist/KneeXrayMeasurement.app
 release_zip="dist/KneeXrayMeasurement-macOS-arm64.zip"
 release_zip_temp="dist/.KneeXrayMeasurement-macOS-arm64.$$.tmp.zip"

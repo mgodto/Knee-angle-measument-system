@@ -5,11 +5,11 @@
     "checkpoint": "models/current.pt",
     "display_name": "膝関節ランドマーク推定モデル",
     "version": "auto",
-    "cohort": "片側下肢・研究用混合データセット",
+    "cohort": "人工関節なし・一般骨格",
     "device": "cpu",
     "options": {
       "low_peak_threshold": 0.35,
-      "allow_legacy_checkpoint": true
+      "allow_legacy_checkpoint": false
     }
   }
 }

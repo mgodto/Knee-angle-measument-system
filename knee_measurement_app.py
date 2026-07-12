@@ -49,7 +49,7 @@ from measure_angles import (
 )
 
 
-APP_VERSION = "0.2.2"
+APP_VERSION = "0.2.3"
 APP_TITLE = "下肢全長X線 自動計測"
 
 COLORS = {
