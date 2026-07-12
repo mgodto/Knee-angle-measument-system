@@ -111,7 +111,7 @@ def normalize_render_style(style: str | None) -> str:
     value = normalize_name(str(style)).strip().lower()
     if value in RENDER_STYLES:
         return value
-    raise ValueError(f"Unknown render style: {style}. Expected one of: {', '.join(RENDER_STYLES)}")
+    raise ValueError(f"不明な描画形式です：{style}。使用可能：{', '.join(RENDER_STYLES)}")
 
 
 def infer_knee_side_from_sources(*sources: object) -> str | None:
@@ -154,7 +154,7 @@ def resolve_raw_path(point_path: Path, line_path: Path, raw_path: Path | None) -
         candidates.append(path)
 
     if not candidates:
-        raise FileNotFoundError(f"No raw image found in {case_dir}")
+        raise FileNotFoundError(f"元画像が見つかりません：{case_dir}")
 
     if side is not None:
         for candidate in candidates:
@@ -173,10 +173,10 @@ def read_color(path: Path) -> np.ndarray:
     try:
         encoded = np.frombuffer(path.read_bytes(), dtype=np.uint8)
     except OSError as exc:
-        raise ValueError(f"Cannot read image: {path}") from exc
+        raise ValueError(f"画像を読み込めません：{path}") from exc
     image = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
     if image is None:
-        raise ValueError(f"Cannot read image: {path}")
+        raise ValueError(f"画像を読み込めません：{path}")
     return image
 
 
@@ -185,30 +185,30 @@ def write_image(path: Path, image: np.ndarray) -> None:
     extension = path.suffix or ".jpg"
     ok, encoded = cv2.imencode(extension, image)
     if not ok:
-        raise ValueError(f"Cannot encode image as {extension}: {path}")
+        raise ValueError(f"画像を {extension} 形式に変換できません：{path}")
     try:
         path.write_bytes(encoded.tobytes())
     except OSError as exc:
-        raise ValueError(f"Cannot write image: {path}") from exc
+        raise ValueError(f"画像を書き込めません：{path}") from exc
 
 
 def point_to_array(point: dict | list | tuple | np.ndarray, name: str = "point") -> np.ndarray:
     if isinstance(point, dict):
         if "x" not in point or "y" not in point:
-            raise ValueError(f"Annotation point '{name}' must contain x and y.")
+            raise ValueError(f"ランドマーク '{name}' にはx座標とy座標が必要です。")
         x_value = point["x"]
         y_value = point["y"]
     elif isinstance(point, (list, tuple, np.ndarray)) and len(point) == 2:
         x_value, y_value = point
     else:
-        raise ValueError(f"Annotation point '{name}' must be a 2D coordinate.")
+        raise ValueError(f"ランドマーク '{name}' は2次元座標で指定してください。")
     return np.array([float(x_value), float(y_value)], dtype=np.float32)
 
 
 def named_points_to_arrays(named_points: dict) -> tuple[np.ndarray, np.ndarray, list[np.ndarray], list[np.ndarray]]:
     missing = [name for name in ANNOTATION_POINT_NAMES if name not in named_points]
     if missing:
-        raise ValueError(f"Missing annotation points: {', '.join(missing)}")
+        raise ValueError(f"必要なランドマークがありません：{', '.join(missing)}")
 
     hip = point_to_array(named_points["hip"], "hip")
     ankle = point_to_array(named_points["ankle"], "ankle")
@@ -252,7 +252,7 @@ def build_annotation_record(
 
 def line_endpoint_pair_to_arrays(line_data: dict, name: str) -> tuple[np.ndarray, np.ndarray]:
     if not isinstance(line_data, dict) or "p1" not in line_data or "p2" not in line_data:
-        raise ValueError(f"Annotation line '{name}' must contain p1 and p2.")
+        raise ValueError(f"関節線 '{name}' にはp1とp2が必要です。")
     return point_to_array(line_data["p1"], f"{name}.p1"), point_to_array(line_data["p2"], f"{name}.p2")
 
 
@@ -283,11 +283,11 @@ def load_annotation(path: Path) -> dict:
         data = json.load(handle)
 
     if "points" not in data or not isinstance(data["points"], dict):
-        raise ValueError(f"Invalid annotation file: {path}")
+        raise ValueError(f"ランドマークファイルが正しくありません：{path}")
 
     missing = [name for name in ANNOTATION_POINT_NAMES if name not in data["points"]]
     if missing:
-        raise ValueError(f"Annotation file is missing points: {', '.join(missing)}")
+        raise ValueError(f"ランドマークファイルに必要な点がありません：{', '.join(missing)}")
 
     if "lines" in data and data["lines"] is not None:
         build_line_record(data["lines"])
@@ -305,7 +305,7 @@ def extract_line_mask(raw_gray: np.ndarray, line_gray: np.ndarray) -> np.ndarray
 def knee_bbox_from_mask(mask: np.ndarray) -> tuple[int, int, int, int]:
     ys, xs = np.where(mask > 0)
     if len(xs) == 0:
-        raise ValueError("No line pixels found after raw/line subtraction.")
+        raise ValueError("元画像との差分から関節線を検出できませんでした。")
     return int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())
 
 
@@ -425,7 +425,7 @@ def select_measurement_points(points: list[dict], bbox: tuple[int, int, int, int
     upper_candidates = [point for point in points if point["raw_y"] < y1 - 80]
     lower_candidates = [point for point in points if point["raw_y"] > y2 + 80]
     if not upper_candidates or not lower_candidates:
-        raise ValueError("Could not isolate the proximal and distal axis points from the point image.")
+        raise ValueError("近位・遠位の機械軸ランドマークを分離できませんでした。")
 
     hip_point = min(upper_candidates, key=lambda point: (abs(point["raw_x"] - knee_center_x), point["raw_y"]))
     ankle_point = min(lower_candidates, key=lambda point: (abs(point["raw_x"] - knee_center_x), -point["raw_y"]))
@@ -433,7 +433,7 @@ def select_measurement_points(points: list[dict], bbox: tuple[int, int, int, int
     knee_points = sorted(knee_points, key=lambda point: point["raw_x"])
     paired = [knee_points[0:2], knee_points[2:4], knee_points[4:6]]
     if any(len(pair) != 2 for pair in paired):
-        raise ValueError("Failed to split the six knee points into three left/center/right pairs.")
+        raise ValueError("膝周囲の6点を画像左・中央・画像右の組に分けられませんでした。")
 
     upper_points = []
     lower_points = []
@@ -457,7 +457,7 @@ def line_model_from_segment(start: np.ndarray, end: np.ndarray) -> LineModel:
     vec = np.asarray(end, dtype=np.float32) - np.asarray(start, dtype=np.float32)
     norm = float(np.linalg.norm(vec))
     if norm < 1e-6:
-        raise ValueError("A joint line segment must have non-zero length.")
+        raise ValueError("関節線の長さは0より大きい必要があります。")
     direction = vec / norm
     return LineModel(float(direction[0]), float(direction[1]), float(start[0]), float(start[1]))
 
@@ -505,7 +505,7 @@ def extract_joint_lines_from_mask(
     ys, xs = np.where(mask > 0)
     pixels = np.column_stack([xs, ys]).astype(np.float32)
     if len(pixels) == 0:
-        raise ValueError("No line pixels found after raw/line subtraction.")
+        raise ValueError("元画像との差分から関節線を検出できませんでした。")
 
     midpoints = [(upper + lower) * 0.5 for upper, lower in zip(upper_points, lower_points)]
     separator = fit_line_from_points(midpoints)
@@ -614,7 +614,7 @@ def intersect_lines(line_a: LineModel, line_b: LineModel) -> np.ndarray:
     try:
         t, _ = np.linalg.solve(matrix, rhs)
     except np.linalg.LinAlgError as exc:
-        raise ValueError("The fitted lines are nearly parallel and cannot be intersected.") from exc
+        raise ValueError("推定した2直線がほぼ平行のため、交点を計算できません。") from exc
     return p + t * r
 
 
@@ -983,6 +983,7 @@ def measure_from_named_points(
     named_lines: dict | None = None,
     side: str | None = None,
     render_style: str = RENDER_STYLE_DEBUG,
+    render_component_images: bool = True,
 ) -> tuple[dict, dict]:
     style = normalize_render_style(render_style)
     hip, ankle, upper_points, lower_points = named_points_to_arrays(named_points)
@@ -1068,69 +1069,71 @@ def measure_from_named_points(
         hka_color = (180, 180, 255)
         clinical_line_thickness = 1
 
-        e_image = raw_image.copy()
-        annotate_measurement(
-            e_image,
-            upper_display_segment,
-            upper_intersection,
-            hip,
-            upper_joint_ray,
-            e_angle,
-            UPPER_ANGLE_LABEL,
-            color=joint_color,
-            label_only=True,
-            line_thickness=clinical_line_thickness,
-            arc_thickness=clinical_line_thickness,
-            draw_axis_point=False,
-        )
-        g_image = raw_image.copy()
-        annotate_measurement(
-            g_image,
-            lower_display_segment,
-            lower_intersection,
-            ankle,
-            lower_joint_ray,
-            g_angle,
-            LOWER_ANGLE_LABEL,
-            color=joint_color,
-            label_only=True,
-            line_thickness=clinical_line_thickness,
-            arc_thickness=clinical_line_thickness,
-            draw_axis_point=False,
-        )
-        jlca_image = raw_image.copy()
-        annotate_two_line_angle(
-            jlca_image,
-            jlca_intersection,
-            jlca_ray_a,
-            jlca_ray_b,
-            jlca_angle,
-            JLCA_ANGLE_LABEL,
-            jlca_color,
-            radius=42,
-            segment_a=upper_display_segment,
-            segment_b=lower_display_segment,
-            label_only=True,
-            line_thickness=clinical_line_thickness,
-            arc_thickness=clinical_line_thickness,
-        )
-        hka_image = raw_image.copy()
-        annotate_two_line_angle(
-            hka_image,
-            hka_intersection,
-            hka_ray_a,
-            hka_ray_b,
-            hka_angle,
-            HKA_ANGLE_LABEL,
-            hka_color,
-            radius=64,
-            text_offset=np.array([0.0, 50.0], dtype=np.float32),
-            segment_a=hka_femur_segment,
-            segment_b=hka_tibia_segment,
-            label_only=True,
-            line_thickness=clinical_line_thickness,
-            arc_thickness=clinical_line_thickness,
-        )
+        e_image = g_image = jlca_image = hka_image = None
+        if render_component_images:
+            e_image = raw_image.copy()
+            annotate_measurement(
+                e_image,
+                upper_display_segment,
+                upper_intersection,
+                hip,
+                upper_joint_ray,
+                e_angle,
+                UPPER_ANGLE_LABEL,
+                color=joint_color,
+                label_only=True,
+                line_thickness=clinical_line_thickness,
+                arc_thickness=clinical_line_thickness,
+                draw_axis_point=False,
+            )
+            g_image = raw_image.copy()
+            annotate_measurement(
+                g_image,
+                lower_display_segment,
+                lower_intersection,
+                ankle,
+                lower_joint_ray,
+                g_angle,
+                LOWER_ANGLE_LABEL,
+                color=joint_color,
+                label_only=True,
+                line_thickness=clinical_line_thickness,
+                arc_thickness=clinical_line_thickness,
+                draw_axis_point=False,
+            )
+            jlca_image = raw_image.copy()
+            annotate_two_line_angle(
+                jlca_image,
+                jlca_intersection,
+                jlca_ray_a,
+                jlca_ray_b,
+                jlca_angle,
+                JLCA_ANGLE_LABEL,
+                jlca_color,
+                radius=42,
+                segment_a=upper_display_segment,
+                segment_b=lower_display_segment,
+                label_only=True,
+                line_thickness=clinical_line_thickness,
+                arc_thickness=clinical_line_thickness,
+            )
+            hka_image = raw_image.copy()
+            annotate_two_line_angle(
+                hka_image,
+                hka_intersection,
+                hka_ray_a,
+                hka_ray_b,
+                hka_angle,
+                HKA_ANGLE_LABEL,
+                hka_color,
+                radius=64,
+                text_offset=np.array([0.0, 50.0], dtype=np.float32),
+                segment_a=hka_femur_segment,
+                segment_b=hka_tibia_segment,
+                label_only=True,
+                line_thickness=clinical_line_thickness,
+                arc_thickness=clinical_line_thickness,
+            )
 
         combined_image = raw_image.copy()
         draw_line(combined_image, upper_display_segment[0], upper_display_segment[1], joint_color, thickness=clinical_line_thickness)
@@ -1183,51 +1186,53 @@ def measure_from_named_points(
         draw_label_tag(combined_image, JLCA_ANGLE_LABEL, jlca_anchor, jlca_color)
         draw_label_tag(combined_image, HKA_ANGLE_LABEL, hka_anchor, hka_color)
     else:
-        e_image = draw_measurement(
-            raw_image,
-            upper_display_segment,
-            upper_intersection,
-            hip,
-            upper_joint_ray,
-            e_angle,
-            UPPER_ANGLE_LABEL,
-        )
-        g_image = draw_measurement(
-            raw_image,
-            lower_display_segment,
-            lower_intersection,
-            ankle,
-            lower_joint_ray,
-            g_angle,
-            LOWER_ANGLE_LABEL,
-        )
-        jlca_image = raw_image.copy()
-        annotate_two_line_angle(
-            jlca_image,
-            jlca_intersection,
-            jlca_ray_a,
-            jlca_ray_b,
-            jlca_angle,
-            JLCA_ANGLE_LABEL,
-            (0, 180, 255),
-            radius=42,
-            segment_a=upper_display_segment,
-            segment_b=lower_display_segment,
-        )
-        hka_image = raw_image.copy()
-        annotate_two_line_angle(
-            hka_image,
-            hka_intersection,
-            hka_ray_a,
-            hka_ray_b,
-            hka_angle,
-            HKA_ANGLE_LABEL,
-            (255, 180, 0),
-            radius=64,
-            text_offset=np.array([0.0, 70.0], dtype=np.float32),
-            segment_a=hka_femur_segment,
-            segment_b=hka_tibia_segment,
-        )
+        e_image = g_image = jlca_image = hka_image = None
+        if render_component_images:
+            e_image = draw_measurement(
+                raw_image,
+                upper_display_segment,
+                upper_intersection,
+                hip,
+                upper_joint_ray,
+                e_angle,
+                UPPER_ANGLE_LABEL,
+            )
+            g_image = draw_measurement(
+                raw_image,
+                lower_display_segment,
+                lower_intersection,
+                ankle,
+                lower_joint_ray,
+                g_angle,
+                LOWER_ANGLE_LABEL,
+            )
+            jlca_image = raw_image.copy()
+            annotate_two_line_angle(
+                jlca_image,
+                jlca_intersection,
+                jlca_ray_a,
+                jlca_ray_b,
+                jlca_angle,
+                JLCA_ANGLE_LABEL,
+                (0, 180, 255),
+                radius=42,
+                segment_a=upper_display_segment,
+                segment_b=lower_display_segment,
+            )
+            hka_image = raw_image.copy()
+            annotate_two_line_angle(
+                hka_image,
+                hka_intersection,
+                hka_ray_a,
+                hka_ray_b,
+                hka_angle,
+                HKA_ANGLE_LABEL,
+                (255, 180, 0),
+                radius=64,
+                text_offset=np.array([0.0, 70.0], dtype=np.float32),
+                segment_a=hka_femur_segment,
+                segment_b=hka_tibia_segment,
+            )
         combined_image = raw_image.copy()
         jlca_text_anchor = annotate_two_line_angle(
             combined_image,

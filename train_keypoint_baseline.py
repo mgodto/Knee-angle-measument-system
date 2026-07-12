@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 import random
 import warnings
 from pathlib import Path
 
-import cv2
 import numpy as np
 import torch
 import torch.nn as nn
@@ -18,39 +18,33 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 
 from knee_dataset_utils import annotation_keypoints, dataset_manifest_path, load_manifest, read_json
-from measure_angles import ANNOTATION_POINT_NAMES, measure_from_named_points
-
-
-KEYPOINT_NAMES = (
-    *ANNOTATION_POINT_NAMES,
-    "upper_line_p1",
-    "upper_line_p2",
-    "lower_line_p1",
-    "lower_line_p2",
+from measure_angles import measure_from_named_points
+from knee_keypoint_model import (
+    ADAPTER_ID,
+    ARCHITECTURE_ID,
+    CHECKPOINT_SCHEMA_VERSION,
+    KEYPOINT_NAMES,
+    PREPROCESSING_ID,
+    SmallHeatmapNet,
+    coords_to_measurement_payload,
+    decode_heatmaps,
+    preprocess_xray,
+    select_device,
 )
-POINT_NAME_SET = set(ANNOTATION_POINT_NAMES)
-LINE_KEYPOINT_TO_LINE = {
-    "upper_line_p1": ("upper_line", "p1"),
-    "upper_line_p2": ("upper_line", "p2"),
-    "lower_line_p1": ("lower_line", "p1"),
-    "lower_line_p2": ("lower_line", "p2"),
-}
-
-
-def select_device(value: str) -> torch.device:
-    if value != "auto":
-        return torch.device(value)
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    if getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
 
 
 def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+
+
+def sha256_path(path: Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def split_by_case(rows: list[dict[str, str]], num_folds: int, fold: int, seed: int) -> tuple[list[int], list[int]]:
@@ -61,19 +55,6 @@ def split_by_case(rows: list[dict[str, str]], num_folds: int, fold: int, seed: i
     train_indices = [idx for idx, row in enumerate(rows) if row["case_id"] not in val_cases]
     val_indices = [idx for idx, row in enumerate(rows) if row["case_id"] in val_cases]
     return train_indices, val_indices
-
-
-def preprocess_xray(path: Path, image_width: int, image_height: int) -> np.ndarray:
-    image = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
-    if image is None:
-        raise ValueError(f"Cannot read image: {path}")
-    image = cv2.resize(image, (image_width, image_height), interpolation=cv2.INTER_AREA)
-    image = image.astype(np.float32)
-    low, high = np.percentile(image, [1.0, 99.0])
-    if high <= low:
-        low, high = float(image.min()), float(image.max())
-    image = np.clip((image - low) / max(high - low, 1e-6), 0.0, 1.0)
-    return image
 
 
 def make_heatmaps(
@@ -99,6 +80,15 @@ def make_heatmaps(
     return heatmaps
 
 
+def heatmap_mse_loss(logits: torch.Tensor, targets: torch.Tensor, peak_weight: float = 1.0) -> torch.Tensor:
+    predictions = torch.sigmoid(logits)
+    if peak_weight == 1.0:
+        return F.mse_loss(predictions, targets)
+    weights = 1.0 + (peak_weight - 1.0) * targets
+    per_heatmap = (weights * (predictions - targets).square()).sum(dim=(-2, -1)) / weights.sum(dim=(-2, -1))
+    return per_heatmap.mean()
+
+
 class KneeKeypointDataset(Dataset):
     def __init__(
         self,
@@ -108,6 +98,7 @@ class KneeKeypointDataset(Dataset):
         image_height: int,
         stride: int,
         sigma: float,
+        cache: bool = False,
     ) -> None:
         self.rows = rows
         self.indices = indices
@@ -115,11 +106,16 @@ class KneeKeypointDataset(Dataset):
         self.image_height = image_height
         self.stride = stride
         self.sigma = sigma
+        self.cache = cache
+        self._cache: dict[int, tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = {}
 
     def __len__(self) -> int:
         return len(self.indices)
 
     def __getitem__(self, dataset_index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        if self.cache and dataset_index in self._cache:
+            return self._cache[dataset_index]
+
         row_index = self.indices[dataset_index]
         row = self.rows[row_index]
         annotation = read_json(Path(row["annotation_path"]))
@@ -135,78 +131,14 @@ class KneeKeypointDataset(Dataset):
             self.stride,
             self.sigma,
         )
-        return (
+        sample = (
             torch.from_numpy(image[None, ...]),
             torch.from_numpy(heatmaps),
             torch.tensor(row_index, dtype=torch.long),
         )
-
-
-class ConvBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int) -> None:
-        super().__init__()
-        self.block = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.block(x)
-
-
-class SmallHeatmapNet(nn.Module):
-    def __init__(self, out_channels: int) -> None:
-        super().__init__()
-        self.encoder = nn.Sequential(
-            ConvBlock(1, 16),
-            nn.MaxPool2d(2),
-            ConvBlock(16, 32),
-            nn.MaxPool2d(2),
-            ConvBlock(32, 64),
-            ConvBlock(64, 64),
-        )
-        self.head = nn.Conv2d(64, out_channels, kernel_size=1)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.head(self.encoder(x))
-
-
-def decode_heatmaps(
-    logits: torch.Tensor,
-    row: dict[str, str],
-    image_width: int,
-    image_height: int,
-    stride: int,
-) -> np.ndarray:
-    heatmaps = torch.sigmoid(logits).detach().cpu().numpy()
-    coords = np.zeros((len(KEYPOINT_NAMES), 2), dtype=np.float32)
-    orig_w = float(row["image_width"])
-    orig_h = float(row["image_height"])
-    for idx, heatmap in enumerate(heatmaps):
-        flat_index = int(np.argmax(heatmap))
-        y, x = np.unravel_index(flat_index, heatmap.shape)
-        image_x = float(x * stride)
-        image_y = float(y * stride)
-        coords[idx, 0] = image_x * orig_w / image_width
-        coords[idx, 1] = image_y * orig_h / image_height
-    return coords
-
-
-def coords_to_measurement_payload(coords: np.ndarray) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, dict[str, float]]]]:
-    named_points: dict[str, dict[str, float]] = {}
-    named_lines: dict[str, dict[str, dict[str, float]]] = {}
-    for name, (x, y) in zip(KEYPOINT_NAMES, coords):
-        point = {"x": float(x), "y": float(y)}
-        if name in POINT_NAME_SET:
-            named_points[name] = point
-        else:
-            line_name, endpoint = LINE_KEYPOINT_TO_LINE[name]
-            named_lines.setdefault(line_name, {})[endpoint] = point
-    return named_points, named_lines
+        if self.cache:
+            self._cache[dataset_index] = sample
+        return sample
 
 
 def evaluate(
@@ -217,6 +149,7 @@ def evaluate(
     image_width: int,
     image_height: int,
     stride: int,
+    heatmap_peak_weight: float = 1.0,
 ) -> dict[str, float]:
     model.eval()
     losses: list[float] = []
@@ -228,7 +161,7 @@ def evaluate(
             images = images.to(device)
             targets = targets.to(device)
             logits = model(images)
-            loss = F.mse_loss(torch.sigmoid(logits), targets)
+            loss = heatmap_mse_loss(logits, targets, heatmap_peak_weight)
             losses.append(float(loss.detach().cpu()))
             for batch_idx, row_index_tensor in enumerate(row_indices):
                 row_index = int(row_index_tensor)
@@ -240,7 +173,10 @@ def evaluate(
                 point_errors.extend(np.linalg.norm(pred_coords - target_coords, axis=1).tolist())
 
                 try:
-                    raw_image = cv2.imread(row["raw_path"])
+                    # Angle calculations depend only on coordinates and image
+                    # dimensions. Avoid decoding the full-resolution X-ray for
+                    # every validation sample and epoch.
+                    raw_image = np.zeros((1, 1, 3), dtype=np.uint8)
                     pred_points, pred_lines = coords_to_measurement_payload(pred_coords)
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore", RuntimeWarning)
@@ -250,6 +186,7 @@ def evaluate(
                             raw_path=Path(row["raw_path"]),
                             named_lines=pred_lines,
                             side=row["side"],
+                            render_component_images=False,
                         )
                     mldfa_error = abs(float(result["mldfa_angle"]) - float(row["mldfa"]))
                     mpta_error = abs(float(result["mpta_angle"]) - float(row["mpta"]))
@@ -287,18 +224,33 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=4)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight-decay", type=float, default=1e-5)
+    parser.add_argument(
+        "--heatmap-peak-weight",
+        type=float,
+        default=1.0,
+        help="Relative MSE weight at the center of each target heatmap (1 disables weighting).",
+    )
     parser.add_argument("--num-folds", type=int, default=5)
     parser.add_argument("--fold", type=int, default=0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="auto", help="auto, cpu, cuda, or mps")
+    parser.add_argument("--model-version", default="", help="Optional deployment model version stored in checkpoints.")
+    parser.add_argument("--model-scope", default="unspecified", help="Deployment cohort/scope stored in checkpoints.")
+    parser.add_argument("--cache-dataset", action="store_true", help="Cache resized images and heatmaps in memory.")
+    parser.add_argument("--eval-every", type=int, default=1, help="Run full validation every N epochs.")
     parser.add_argument("--max-samples", type=int, default=0, help="Optional smoke-test limit.")
     args = parser.parse_args()
 
     if args.image_width % args.stride != 0 or args.image_height % args.stride != 0:
         raise ValueError("--image-width and --image-height must be divisible by --stride")
+    if args.eval_every < 1:
+        raise ValueError("--eval-every must be at least 1")
+    if args.heatmap_peak_weight < 1.0:
+        raise ValueError("--heatmap-peak-weight must be at least 1")
     set_seed(args.seed)
     device = select_device(args.device)
     args.manifest = dataset_manifest_path(args.dataset_dir, args.manifest, Path("outputs/knee_dataset_manifest.csv"))
+    manifest_sha256 = sha256_path(args.manifest)
     rows = load_manifest(args.manifest)
     if args.max_samples:
         rows = rows[: args.max_samples]
@@ -306,8 +258,24 @@ def main() -> None:
     if not train_indices or not val_indices:
         raise ValueError("Train/validation split is empty. Reduce --num-folds or remove --max-samples.")
 
-    train_dataset = KneeKeypointDataset(rows, train_indices, args.image_width, args.image_height, args.stride, args.sigma)
-    val_dataset = KneeKeypointDataset(rows, val_indices, args.image_width, args.image_height, args.stride, args.sigma)
+    train_dataset = KneeKeypointDataset(
+        rows,
+        train_indices,
+        args.image_width,
+        args.image_height,
+        args.stride,
+        args.sigma,
+        cache=args.cache_dataset,
+    )
+    val_dataset = KneeKeypointDataset(
+        rows,
+        val_indices,
+        args.image_width,
+        args.image_height,
+        args.stride,
+        args.sigma,
+        cache=args.cache_dataset,
+    )
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=0)
 
@@ -335,13 +303,38 @@ def main() -> None:
                 targets = targets.to(device)
                 optimizer.zero_grad(set_to_none=True)
                 logits = model(images)
-                loss = F.mse_loss(torch.sigmoid(logits), targets)
+                loss = heatmap_mse_loss(logits, targets, args.heatmap_peak_weight)
                 loss.backward()
                 optimizer.step()
                 train_losses.append(float(loss.detach().cpu()))
 
-            val_metrics = evaluate(model, val_loader, rows, device, args.image_width, args.image_height, args.stride)
             train_loss = float(np.mean(train_losses)) if train_losses else float("nan")
+            should_evaluate = epoch == 1 or epoch % args.eval_every == 0 or epoch == args.epochs
+            if not should_evaluate:
+                log_writer.writerow(
+                    {
+                        "epoch": epoch,
+                        "train_loss": f"{train_loss:.8f}",
+                        "val_loss": "",
+                        "val_point_mae_px": "",
+                        "val_mldfa_mae_deg": "",
+                        "val_mpta_mae_deg": "",
+                    }
+                )
+                log_file.flush()
+                print(f"epoch {epoch:03d} train={train_loss:.6f}")
+                continue
+
+            val_metrics = evaluate(
+                model,
+                val_loader,
+                rows,
+                device,
+                args.image_width,
+                args.image_height,
+                args.stride,
+                args.heatmap_peak_weight,
+            )
             log_writer.writerow(
                 {
                     "epoch": epoch,
@@ -363,6 +356,14 @@ def main() -> None:
                 best_val = val_metrics["point_mae_px"]
                 torch.save(
                     {
+                        "checkpoint_schema_version": CHECKPOINT_SCHEMA_VERSION,
+                        "adapter_id": ADAPTER_ID,
+                        "architecture_id": ARCHITECTURE_ID,
+                        "preprocessing_id": PREPROCESSING_ID,
+                        "prediction_schema_version": 1,
+                        "model_version": args.model_version or None,
+                        "model_scope": args.model_scope,
+                        "training_manifest_sha256": manifest_sha256,
                         "model_state": model.state_dict(),
                         "keypoint_names": KEYPOINT_NAMES,
                         "image_width": args.image_width,

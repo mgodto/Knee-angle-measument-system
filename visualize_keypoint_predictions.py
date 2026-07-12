@@ -14,13 +14,15 @@ import torch
 
 from knee_dataset_utils import annotation_keypoints, dataset_manifest_path, load_manifest, read_json
 from measure_angles import measure_from_named_points
-from train_keypoint_baseline import (
+from knee_keypoint_model import (
     KEYPOINT_NAMES,
     SmallHeatmapNet,
     coords_to_measurement_payload,
     decode_heatmaps,
     preprocess_xray,
     select_device,
+)
+from train_keypoint_baseline import (
     split_by_case,
 )
 
@@ -34,9 +36,9 @@ TEXT_COLOR = (255, 255, 255)
 
 def load_model(checkpoint_path: Path, device: torch.device) -> tuple[SmallHeatmapNet, dict]:
     try:
-        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-    except TypeError:
-        checkpoint = torch.load(checkpoint_path, map_location=device)
+        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
+    except TypeError as exc:
+        raise RuntimeError("PyTorch 2.0 or newer is required for safe checkpoint loading.") from exc
     keypoint_names = tuple(checkpoint.get("keypoint_names", KEYPOINT_NAMES))
     if keypoint_names != KEYPOINT_NAMES:
         raise ValueError(f"Checkpoint keypoints do not match current model: {keypoint_names}")

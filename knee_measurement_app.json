@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "model": {
+    "adapter": "small_heatmap_v1",
+    "checkpoint": "models/current.pt",
+    "display_name": "膝関節ランドマーク推定モデル",
+    "version": "auto",
+    "cohort": "片側下肢・研究用混合データセット",
+    "device": "cpu",
+    "options": {
+      "low_peak_threshold": 0.35,
+      "allow_legacy_checkpoint": true
+    }
+  }
+}
