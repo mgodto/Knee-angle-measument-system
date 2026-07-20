@@ -24,7 +24,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-python -c "import platform,struct,sys; assert (3,10) ^<= sys.version_info[:2] ^< (3,13), 'Python 3.10-3.12 is required'; assert struct.calcsize('P') == 8 and platform.machine().upper() in {'AMD64','X86_64'}, 'Windows x64 Python is required'"
+python -c "import platform,struct,sys; assert (3,10) <= sys.version_info[:2] < (3,13), 'Python 3.10-3.12 is required'; assert struct.calcsize('P') == 8 and platform.machine().upper() in {'AMD64','X86_64'}, 'Windows x64 Python is required'"
 if errorlevel 1 exit /b 1
 python -c "import tkinter; print('Tk', tkinter.TkVersion)"
 if errorlevel 1 exit /b 1
