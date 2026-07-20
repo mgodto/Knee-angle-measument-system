@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 
+env:
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: utf-8
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -24,6 +28,13 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-app.txt
 
+      - name: Generate and compile English Windows entrypoint
+        shell: cmd
+        run: >-
+          python generate_windows_english_entrypoint.py
+          --source knee_measurement_app.py
+          --output knee_measurement_app_windows.py
+
       - name: Build, smoke test, and audit package
         shell: cmd
         run: build_measurement_windows.bat
@@ -31,7 +42,8 @@ jobs:
       - name: Upload final Windows release ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: KneeXrayMeasurement-Windows-x64-v0.2.4-20260720
-          path: dist/KneeXrayMeasurement-Windows-x64-v0.2.4-20260720.zip
+          name: KneeXrayMeasurement-Windows-x64-v0.3.0-20260720
+          path: dist/KneeXrayMeasurement-Windows-x64-v0.3.0-20260720.zip
           if-no-files-found: error
+          compression-level: 0
           retention-days: 7

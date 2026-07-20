@@ -8,16 +8,30 @@ set PYTHONUTF8=1
 set PYTHONIOENCODING=utf-8
 chcp 65001 >nul
 
-set "APP_VERSION=0.2.4"
+set "APP_VERSION=0.3.0"
 set "RELEASE_DATE=20260720"
-set "EXPECTED_MODEL_SHA=f0cfa67f34691f3d81da0e10f0d6ff753dcf71f5aafd278ddb6bf146efc6ba45"
+set "EXPECTED_BONE_SHA=24481410c3fd2ce2222eed422f4d519f72da95ba232570ee31a4827d45201cfd"
+set "EXPECTED_TKA_SHA=87027887ec091068a9b91b01a881092400fed58eb8d3eeaaeddb10e8be398e5f"
+set "EXPECTED_MIXED_SHA=f0cfa67f34691f3d81da0e10f0d6ff753dcf71f5aafd278ddb6bf146efc6ba45"
 set "RELEASE_ROOT=KneeXrayMeasurement-Windows-x64-v%APP_VERSION%-%RELEASE_DATE%"
 set "RELEASE_ZIP=dist\%RELEASE_ROOT%.zip"
-set "RELEASE_STAGE=release stage\%RELEASE_ROOT%"
-set "SMOKE_IMAGE=%TEMP%\KneeXrayMeasurement-non-clinical-smoke-%RELEASE_DATE%.png"
+set "RELEASE_STAGE_ROOT=release-stage-measurement"
+set "RELEASE_STAGE=%RELEASE_STAGE_ROOT%\%RELEASE_ROOT%"
+set "WINDOWS_ENTRYPOINT=knee_measurement_app_windows.py"
+set "SMOKE_IMAGE=%TEMP%\KneeXrayMeasurement-non-clinical-smoke-unknown-%RELEASE_DATE%.png"
+set "SMOKE_BONE_IMAGE=%TEMP%\KneeXrayMeasurement-non-clinical-smoke-bone-%RELEASE_DATE%.png"
+set "SMOKE_TKA_IMAGE=%TEMP%\KneeXrayMeasurement-non-clinical-smoke-TKA-%RELEASE_DATE%.png"
 
-if not exist models\current.pt (
-  echo Missing models\current.pt
+if not exist models\bone.pt (
+  echo Missing models\bone.pt
+  exit /b 1
+)
+if not exist models\tka.pt (
+  echo Missing models\tka.pt
+  exit /b 1
+)
+if not exist models\mixed.pt (
+  echo Missing models\mixed.pt
   exit /b 1
 )
 
@@ -44,39 +58,59 @@ if errorlevel 1 exit /b 1
 
 python -m unittest discover -s tests -v
 if errorlevel 1 exit /b 1
-python validate_app_model.py
+python generate_windows_english_entrypoint.py --source knee_measurement_app.py --output "%WINDOWS_ENTRYPOINT%"
+if errorlevel 1 exit /b 1
+python -m py_compile "%WINDOWS_ENTRYPOINT%"
+if errorlevel 1 exit /b 1
+python -c "from knee_measurement_app_windows import APP_VERSION, WINDOWS_ENGLISH_BUILD; assert APP_VERSION == '0.3.0', APP_VERSION; assert WINDOWS_ENGLISH_BUILD"
+if errorlevel 1 exit /b 1
+python "%WINDOWS_ENTRYPOINT%" --validate-models
 if errorlevel 1 exit /b 1
 python create_release_smoke_fixture.py "%SMOKE_IMAGE%"
 if errorlevel 1 exit /b 1
-python knee_measurement_app.py --smoke-test-image "%SMOKE_IMAGE%" --side R
+copy /Y "%SMOKE_IMAGE%" "%SMOKE_BONE_IMAGE%" >nul
+if errorlevel 1 exit /b 1
+copy /Y "%SMOKE_IMAGE%" "%SMOKE_TKA_IMAGE%" >nul
+if errorlevel 1 exit /b 1
+python "%WINDOWS_ENTRYPOINT%" --smoke-test-image "%SMOKE_IMAGE%" --side R --model-mode mixed
 if errorlevel 1 exit /b 1
 
 if exist dist\KneeXrayMeasurement rmdir /s /q dist\KneeXrayMeasurement
 if exist "%RELEASE_ZIP%" del /f /q "%RELEASE_ZIP%"
-if exist "release stage" rmdir /s /q "release stage"
+if exist "%RELEASE_STAGE_ROOT%" rmdir /s /q "%RELEASE_STAGE_ROOT%"
 
 pyinstaller --noconfirm --clean knee_measurement_app.spec
 if errorlevel 1 exit /b 1
-dist\KneeXrayMeasurement\KneeXrayMeasurement.exe --validate-model
-if errorlevel 1 exit /b 1
-dist\KneeXrayMeasurement\KneeXrayMeasurement.exe --smoke-test-image "%SMOKE_IMAGE%" --side R
+dist\KneeXrayMeasurement\KneeXrayMeasurement.exe --validate-models
 if errorlevel 1 exit /b 1
 
 mkdir "%RELEASE_STAGE%"
 if errorlevel 1 exit /b 1
-xcopy /E /I /H /Y dist\KneeXrayMeasurement\* "%RELEASE_STAGE%\" >nul
+xcopy /E /I /Y dist\KneeXrayMeasurement\* "%RELEASE_STAGE%\" >nul
 if errorlevel 1 exit /b 1
-copy /Y README_DOCTOR_JA.txt "%RELEASE_STAGE%\README_DOCTOR_JA.txt" >nul
-if errorlevel 1 exit /b 1
-
-"%RELEASE_STAGE%\KneeXrayMeasurement.exe" --validate-model
-if errorlevel 1 exit /b 1
-"%RELEASE_STAGE%\KneeXrayMeasurement.exe" --smoke-test-image "%SMOKE_IMAGE%" --side R
+copy /Y README_DOCTOR_EN.txt "%RELEASE_STAGE%\README_DOCTOR_EN.txt" >nul
 if errorlevel 1 exit /b 1
 
-powershell -NoProfile -Command "Compress-Archive -CompressionLevel Optimal -Path 'release stage\%RELEASE_ROOT%' -DestinationPath '%RELEASE_ZIP%'"
+"%RELEASE_STAGE%\KneeXrayMeasurement.exe" --validate-models
 if errorlevel 1 exit /b 1
-python audit_measurement_archive.py "%RELEASE_ZIP%" --platform windows --expected-root "%RELEASE_ROOT%" --expected-model-sha256 "%EXPECTED_MODEL_SHA%" --expected-app-version "%APP_VERSION%"
+"%RELEASE_STAGE%\KneeXrayMeasurement.exe" --smoke-test-image "%SMOKE_IMAGE%" --side R --model-mode bone
+if errorlevel 1 exit /b 1
+"%RELEASE_STAGE%\KneeXrayMeasurement.exe" --smoke-test-image "%SMOKE_IMAGE%" --side R --model-mode tka
+if errorlevel 1 exit /b 1
+"%RELEASE_STAGE%\KneeXrayMeasurement.exe" --smoke-test-image "%SMOKE_IMAGE%" --side R --model-mode mixed
+if errorlevel 1 exit /b 1
+"%RELEASE_STAGE%\KneeXrayMeasurement.exe" --smoke-test-image "%SMOKE_BONE_IMAGE%" --side R --model-mode auto
+if errorlevel 1 exit /b 1
+"%RELEASE_STAGE%\KneeXrayMeasurement.exe" --smoke-test-image "%SMOKE_TKA_IMAGE%" --side R --model-mode auto
+if errorlevel 1 exit /b 1
+"%RELEASE_STAGE%\KneeXrayMeasurement.exe" --smoke-test-image "%SMOKE_IMAGE%" --side R --model-mode auto
+if errorlevel 1 exit /b 1
+"%RELEASE_STAGE%\KneeXrayMeasurement.exe" --smoke-test-image "%SMOKE_TKA_IMAGE%" --side R --model-mode bone
+if errorlevel 1 exit /b 1
+
+powershell -NoProfile -Command "Compress-Archive -CompressionLevel Optimal -Path '%RELEASE_STAGE%' -DestinationPath '%RELEASE_ZIP%'"
+if errorlevel 1 exit /b 1
+python audit_measurement_archive.py "%RELEASE_ZIP%" --platform windows --expected-root "%RELEASE_ROOT%" --expected-model "bone.pt=%EXPECTED_BONE_SHA%" --expected-model "tka.pt=%EXPECTED_TKA_SHA%" --expected-model "mixed.pt=%EXPECTED_MIXED_SHA%" --expected-app-version "%APP_VERSION%"
 if errorlevel 1 exit /b 1
 
 echo.

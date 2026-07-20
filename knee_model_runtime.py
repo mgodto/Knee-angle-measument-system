@@ -10,10 +10,13 @@ import io
 import json
 import math
 import os
+import re
 import shutil
 import sys
 import time
+import unicodedata
 import uuid
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -38,6 +41,7 @@ CHECKPOINT_SCHEMA_VERSION = 1
 ARCHITECTURE_ID = "small_heatmap_v1"
 PREPROCESSING_ID = "grayscale_resize_percentile_1_99_v1"
 DEFAULT_CONFIG_FILENAME = "knee_measurement_app.json"
+BUILTIN_MODEL_KEYS = ("bone", "tka", "mixed")
 EXPECTED_KEYPOINT_NAMES = (
     *ANNOTATION_POINT_NAMES,
     "upper_line_p1",
@@ -103,6 +107,16 @@ class AppConfig:
     schema_version: int
     model: ModelSpec
     source_path: Path
+    models: dict[str, ModelSpec] = field(default_factory=dict)
+    default_model_key: str = "mixed"
+    auto_fallback_model_key: str = "mixed"
+
+
+@dataclass(frozen=True)
+class ModelSelection:
+    requested_mode: str
+    model_key: str
+    source: str
 
 
 @dataclass(frozen=True)
@@ -168,6 +182,7 @@ class AnalysisResult:
     source_sha256: str
     total_elapsed_ms: float
     side_source: str
+    model_selection: ModelSelection | None = None
 
 
 @runtime_checkable
@@ -203,6 +218,30 @@ def _resolve_config_resource(value: str | Path, config_dir: Path) -> Path:
     return (config_dir / path).resolve()
 
 
+def _parse_model_spec(model_payload: dict[str, Any], config_dir: Path) -> ModelSpec:
+    if not model_payload.get("adapter") or not model_payload.get("checkpoint"):
+        raise ModelLoadError("モデル設定には 'adapter' と 'checkpoint' の両方が必要です。")
+
+    options = dict(model_payload.get("options") or {})
+    try:
+        low_peak_threshold = float(options.get("low_peak_threshold", 0.35))
+    except (TypeError, ValueError) as exc:
+        raise ModelLoadError("low_peak_threshold は0～1の有限数で指定してください。") from exc
+    if not math.isfinite(low_peak_threshold) or not 0.0 <= low_peak_threshold <= 1.0:
+        raise ModelLoadError("low_peak_threshold は0～1の有限数で指定してください。")
+    options["low_peak_threshold"] = low_peak_threshold
+
+    return ModelSpec(
+        adapter=str(model_payload["adapter"]),
+        checkpoint=_resolve_config_resource(model_payload["checkpoint"], config_dir),
+        display_name=str(model_payload.get("display_name", "膝関節ランドマーク推定モデル")),
+        version=str(model_payload.get("version", "unversioned")),
+        cohort=str(model_payload.get("cohort", "片側下肢")),
+        device=str(model_payload.get("device", "cpu")),
+        options=options,
+    )
+
+
 def load_app_config(path: Path | None = None) -> AppConfig:
     config_path = Path(path or default_config_path()).expanduser().resolve()
     try:
@@ -221,28 +260,125 @@ def load_app_config(path: Path | None = None) -> AppConfig:
     model_payload = payload.get("model")
     if not isinstance(model_payload, dict):
         raise ModelLoadError("アプリ設定には 'model' オブジェクトが必要です。")
-    if not model_payload.get("adapter") or not model_payload.get("checkpoint"):
-        raise ModelLoadError("モデル設定には 'adapter' と 'checkpoint' の両方が必要です。")
+    legacy_model = _parse_model_spec(model_payload, config_path.parent)
+    models_payload = payload.get("models")
+    if models_payload is None:
+        models = {"mixed": legacy_model}
+    else:
+        if not isinstance(models_payload, dict) or not models_payload:
+            raise ModelLoadError("アプリ設定の 'models' には1件以上のモデル設定が必要です。")
+        models: dict[str, ModelSpec] = {}
+        for raw_key, raw_spec in models_payload.items():
+            key = str(raw_key).strip().lower()
+            if not key or not key.replace("_", "").isalnum():
+                raise ModelLoadError(f"モデルキーの形式が正しくありません：{raw_key}")
+            if key in models:
+                raise ModelLoadError(f"モデルキーが重複しています：{key}")
+            if not isinstance(raw_spec, dict):
+                raise ModelLoadError(f"モデル '{key}' の設定はオブジェクトで指定してください。")
+            models[key] = _parse_model_spec(raw_spec, config_path.parent)
 
-    options = dict(model_payload.get("options") or {})
-    try:
-        low_peak_threshold = float(options.get("low_peak_threshold", 0.35))
-    except (TypeError, ValueError) as exc:
-        raise ModelLoadError("low_peak_threshold は0～1の有限数で指定してください。") from exc
-    if not math.isfinite(low_peak_threshold) or not 0.0 <= low_peak_threshold <= 1.0:
-        raise ModelLoadError("low_peak_threshold は0～1の有限数で指定してください。")
-    options["low_peak_threshold"] = low_peak_threshold
-
-    model = ModelSpec(
-        adapter=str(model_payload["adapter"]),
-        checkpoint=_resolve_config_resource(model_payload["checkpoint"], config_path.parent),
-        display_name=str(model_payload.get("display_name", "膝関節ランドマーク推定モデル")),
-        version=str(model_payload.get("version", "unversioned")),
-        cohort=str(model_payload.get("cohort", "片側下肢")),
-        device=str(model_payload.get("device", "cpu")),
-        options=options,
+    default_model_key = str(payload.get("default_model_key", "mixed")).strip().lower()
+    auto_fallback_model_key = str(payload.get("auto_fallback_model_key", default_model_key)).strip().lower()
+    if models_payload is not None:
+        missing_builtin = sorted(set(BUILTIN_MODEL_KEYS).difference(models))
+        if missing_builtin:
+            raise ModelLoadError(f"内蔵モデル設定が不足しています：{', '.join(missing_builtin)}")
+        unexpected_models = sorted(set(models).difference(BUILTIN_MODEL_KEYS))
+        if unexpected_models:
+            raise ModelLoadError(f"未対応の内蔵モデル設定です：{', '.join(unexpected_models)}")
+    if default_model_key not in models:
+        raise ModelLoadError(f"既定モデル '{default_model_key}' が models にありません。")
+    if auto_fallback_model_key not in models:
+        raise ModelLoadError(f"自動判定のfallbackモデル '{auto_fallback_model_key}' が models にありません。")
+    if models_payload is not None and legacy_model != models[default_model_key]:
+        raise ModelLoadError("従来形式の model 設定は default_model_key の内蔵モデルと一致する必要があります。")
+    return AppConfig(
+        schema_version=schema_version,
+        model=models[default_model_key],
+        source_path=config_path,
+        models=models,
+        default_model_key=default_model_key,
+        auto_fallback_model_key=auto_fallback_model_key,
     )
-    return AppConfig(schema_version=schema_version, model=model, source_path=config_path)
+
+
+def _model_key_candidates(*sources: object) -> set[str]:
+    candidates: set[str] = set()
+    bone_phrases = (
+        "未加入人工關節",
+        "未加入人工関節",
+        "人工關節なし",
+        "人工関節なし",
+        "非人工關節",
+        "非人工関節",
+        "without implant",
+        "non-tka",
+        "non_tka",
+    )
+    tka_phrases = (
+        "加入人工關節",
+        "加入人工関節",
+        "人工關節あり",
+        "人工関節あり",
+        "人工膝關節",
+        "人工膝関節",
+        "膝關節置換",
+        "膝関節置換",
+        "total knee arthroplasty",
+    )
+    for source in sources:
+        if source is None:
+            continue
+        text = unicodedata.normalize("NFKC", str(source)).casefold()
+        bone_match = any(phrase in text for phrase in bone_phrases)
+        for phrase in bone_phrases:
+            text = text.replace(phrase, " ")
+        tka_match = any(phrase in text for phrase in tka_phrases)
+        for phrase in tka_phrases:
+            text = text.replace(phrase, " ")
+        tokens = set(filter(None, re.split(r"[^a-z0-9]+", text)))
+        bone_match = bone_match or "bone" in tokens
+        tka_match = tka_match or "tka" in tokens
+        mixed_match = "mixed" in tokens
+        if bone_match:
+            candidates.add("bone")
+        if tka_match:
+            candidates.add("tka")
+        if mixed_match:
+            candidates.add("mixed")
+    return candidates
+
+
+def infer_model_key_from_sources(*sources: object) -> str | None:
+    """Infer an explicitly named implant cohort without inspecting image pixels."""
+
+    candidates = _model_key_candidates(*sources)
+    return next(iter(candidates)) if len(candidates) == 1 else None
+
+
+def resolve_model_selection(
+    requested_mode: str,
+    available_model_keys: Iterable[str],
+    *sources: object,
+    fallback_model_key: str = "mixed",
+) -> ModelSelection:
+    available = {str(key).strip().lower() for key in available_model_keys}
+    mode = str(requested_mode).strip().lower()
+    if mode != "auto":
+        if mode not in available:
+            raise ModelLoadError(f"選択したモデル '{mode}' は利用できません。")
+        return ModelSelection(requested_mode=mode, model_key=mode, source="manual_override")
+
+    candidates = _model_key_candidates(*sources)
+    inferred = next(iter(candidates)) if len(candidates) == 1 else None
+    if inferred in available:
+        return ModelSelection(requested_mode="auto", model_key=inferred, source="filename")
+    fallback = str(fallback_model_key).strip().lower()
+    if fallback not in available:
+        raise ModelLoadError(f"自動判定のfallbackモデル '{fallback}' は利用できません。")
+    source = "auto_fallback_conflict" if len(candidates) > 1 else "auto_fallback_unknown"
+    return ModelSelection(requested_mode="auto", model_key=fallback, source=source)
 
 
 def model_spec_with_checkpoint(spec: ModelSpec, checkpoint: Path) -> ModelSpec:
@@ -949,6 +1085,25 @@ def export_record(
             "model_peak_score": analysis.prediction.peak_scores.get(name),
         }
 
+    analysis_payload: dict[str, Any] = {
+        "side": analysis.side,
+        "side_source": analysis.side_source,
+        "manually_modified": bool(manually_modified),
+        "edited_keys": sorted(edited),
+        "prediction_schema_version": analysis.prediction.schema_version,
+        "coordinate_space": {
+            "unit": "pixel",
+            "origin": "top-left",
+            "x_direction": "right",
+            "y_direction": "down",
+        },
+        "inference_elapsed_ms": round(analysis.prediction.elapsed_ms, 3),
+        "total_elapsed_ms": round(analysis.total_elapsed_ms, 3),
+        "warnings": list(current_warnings),
+    }
+    if analysis.model_selection is not None:
+        analysis_payload["model_selection"] = asdict(analysis.model_selection)
+
     return {
         "schema_version": 1,
         "app": {"name": "Knee X-ray Auto Measurement", "version": app_version},
@@ -960,22 +1115,7 @@ def export_record(
             "input_scope": "single-leg raster X-ray",
         },
         "model": asdict(analysis.prediction.model_info),
-        "analysis": {
-            "side": analysis.side,
-            "side_source": analysis.side_source,
-            "manually_modified": bool(manually_modified),
-            "edited_keys": sorted(edited),
-            "prediction_schema_version": analysis.prediction.schema_version,
-            "coordinate_space": {
-                "unit": "pixel",
-                "origin": "top-left",
-                "x_direction": "right",
-                "y_direction": "down",
-            },
-            "inference_elapsed_ms": round(analysis.prediction.elapsed_ms, 3),
-            "total_elapsed_ms": round(analysis.total_elapsed_ms, 3),
-            "warnings": list(current_warnings),
-        },
+        "analysis": analysis_payload,
         "points": {
             name: point_record(name, points[name], analysis.prediction.points[name])
             for name in ANNOTATION_POINT_NAMES

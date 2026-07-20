@@ -24,6 +24,7 @@ from knee_model_runtime import (
     AnalysisResult,
     AppConfig,
     KneeAnalysisService,
+    ModelSelection,
     ModelSpec,
     SideRequiredError,
     clear_model_preference,
@@ -38,6 +39,7 @@ from knee_model_runtime import (
     measurement_warnings,
     measurement_from_coordinates,
     model_spec_with_checkpoint,
+    resolve_model_selection,
     resolve_side,
     save_model_preference,
     write_result_bundle,
@@ -50,8 +52,29 @@ from measure_angles import (
 )
 
 
-APP_VERSION = "0.2.4"
+APP_VERSION = "0.3.0"
 APP_TITLE = "下肢全長X線 自動計測"
+
+MODEL_MODE_LABELS = {
+    "auto": "自動判定",
+    "bone": "Bone（人工関節なし）",
+    "tka": "TKA（人工関節あり）",
+    "mixed": "Mixed（判定不明）",
+}
+MODEL_LABEL_TO_MODE = {label: mode for mode, label in MODEL_MODE_LABELS.items()}
+MODEL_SHORT_LABELS = {
+    "bone": "Bone",
+    "tka": "TKA",
+    "mixed": "Mixed",
+    "external": "外部",
+}
+MODEL_SOURCE_LABELS = {
+    "filename": "ファイル名／フォルダから自動判定",
+    "auto_fallback_unknown": "種類不明のため Mixed を使用",
+    "auto_fallback_conflict": "種類の候補が競合したため Mixed を使用",
+    "manual_override": "手動指定",
+    "external_model": "外部モデルを手動指定",
+}
 
 COLORS = {
     "page": "#eef2f7",
@@ -116,6 +139,11 @@ class KneeMeasurementApp:
         self.config: AppConfig | None = None
         self.default_model_spec: ModelSpec | None = None
         self.model_spec: ModelSpec | None = None
+        self.model_specs: dict[str, ModelSpec] = {}
+        self.model_cache: dict[str, tuple[ModelSpec, KneeAnalysisService]] = {}
+        self.model_selection = ModelSelection("auto", "mixed", "auto_fallback_unknown")
+        self.active_model_key: str | None = None
+        self.pending_model_key: str | None = None
         self.preference_warning: str | None = None
         self.service: KneeAnalysisService | None = None
         self.analysis: AnalysisResult | None = None
@@ -138,6 +166,8 @@ class KneeMeasurementApp:
         self.closing = False
 
         self.side_var = tk.StringVar(value="自動判定")
+        self.model_mode_var = tk.StringVar(value=MODEL_MODE_LABELS["auto"])
+        self.model_source_var = tk.StringVar(value="モデル選択：自動判定（画像未選択）")
         self.path_var = tk.StringVar(value="画像が選択されていません")
         self.status_var = tk.StringVar(value="AIモデルを準備しています…")
         self.model_badge_var = tk.StringVar(value="モデル：未読み込み")
@@ -165,11 +195,33 @@ class KneeMeasurementApp:
         try:
             self.config = load_app_config(config_path)
             self.default_model_spec = self.config.model
-            self.model_spec, self.preference_warning = load_model_preference(self.default_model_spec)
+            self.model_specs = dict(self.config.models or {self.config.default_model_key: self.config.model})
+            preferred_spec, self.preference_warning = load_model_preference(self.default_model_spec)
         except Exception as exc:
             self._set_model_unavailable(str(exc))
         else:
-            self.root.after(80, lambda: self._start_model_load(self.model_spec, startup=True))
+            if preferred_spec.checkpoint != self.default_model_spec.checkpoint:
+                self.model_mode_var.set("外部モデル")
+                self.model_selection = ModelSelection("external", "external", "external_model")
+                self.model_spec = preferred_spec
+                external_selection = self.model_selection
+                self.root.after(
+                    80,
+                    lambda spec=preferred_spec, selection=external_selection: self._start_model_load(
+                        spec,
+                        startup=True,
+                        model_key="external",
+                        selection=selection,
+                    ),
+                )
+            else:
+                self.model_selection = self._resolve_model_selection("auto")
+                self.model_spec = self.model_specs[self.model_selection.model_key]
+                startup_selection = self.model_selection
+                self.root.after(
+                    80,
+                    lambda selection=startup_selection: self._activate_model_selection(selection, startup=True),
+                )
 
     def _configure_styles(self) -> None:
         style = ttk.Style(self.root)
@@ -243,7 +295,7 @@ class KneeMeasurementApp:
             highlightthickness=1,
         )
         toolbar.pack(fill="x")
-        toolbar.grid_columnconfigure(6, weight=1)
+        toolbar.grid_columnconfigure(7, weight=1)
 
         self.open_button = tk.Button(
             toolbar,
@@ -274,19 +326,36 @@ class KneeMeasurementApp:
         self.side_combo.grid(row=1, column=2, sticky="nw", padx=(12, 4), pady=(0, 8))
         self.side_combo.bind("<<ComboboxSelected>>", self._on_side_changed)
 
+        ttk.Label(toolbar, text="画像種類 / AIモデル", style="Card.TLabel").grid(
+            row=0,
+            column=3,
+            sticky="sw",
+            padx=(12, 4),
+            pady=(8, 0),
+        )
+        self.model_combo = ttk.Combobox(
+            toolbar,
+            textvariable=self.model_mode_var,
+            values=tuple(MODEL_MODE_LABELS.values()),
+            state="readonly",
+            width=19,
+        )
+        self.model_combo.grid(row=1, column=3, sticky="nw", padx=(12, 4), pady=(0, 8))
+        self.model_combo.bind("<<ComboboxSelected>>", self._on_model_mode_changed)
+
         self.model_button = ttk.Menubutton(toolbar, text="AIモデル…")
         self.model_menu = tk.Menu(self.model_button, tearoff=False)
         self.model_menu.add_command(label="AIモデルファイルを選択…", command=self.browse_weight)
-        self.model_menu.add_command(label="標準モデルに戻す", command=self.restore_builtin_model)
+        self.model_menu.add_command(label="自動判定に戻す", command=self.restore_builtin_model)
         self.model_button.configure(menu=self.model_menu)
-        self.model_button.grid(row=0, column=3, rowspan=2, padx=(12, 4), pady=10)
+        self.model_button.grid(row=0, column=4, rowspan=2, padx=(8, 4), pady=10)
         self.undo_button = ttk.Button(toolbar, text="修正を元に戻す", command=self.undo_edit, state="disabled")
-        self.undo_button.grid(row=0, column=4, rowspan=2, padx=4, pady=10)
+        self.undo_button.grid(row=0, column=5, rowspan=2, padx=4, pady=10)
         self.reset_button = ttk.Button(toolbar, text="AI推定位置に戻す", command=self.reset_to_prediction, state="disabled")
-        self.reset_button.grid(row=0, column=5, rowspan=2, padx=4, pady=10)
+        self.reset_button.grid(row=0, column=6, rowspan=2, padx=4, pady=10)
 
         path_box = tk.Frame(toolbar, bg=COLORS["card"])
-        path_box.grid(row=0, column=6, rowspan=2, sticky="ew", padx=(14, 10), pady=8)
+        path_box.grid(row=0, column=7, rowspan=2, sticky="ew", padx=(14, 10), pady=8)
         tk.Label(
             path_box,
             textvariable=self.path_var,
@@ -303,9 +372,17 @@ class KneeMeasurementApp:
             anchor="w",
             font=("TkDefaultFont", 9),
         ).pack(fill="x", pady=(3, 0))
+        tk.Label(
+            path_box,
+            textvariable=self.model_source_var,
+            bg=COLORS["card"],
+            fg=COLORS["primary_dark"],
+            anchor="w",
+            font=("TkDefaultFont", 9, "bold"),
+        ).pack(fill="x", pady=(2, 0))
 
         self.export_button = ttk.Button(toolbar, text="結果を書き出す…", command=self.export_result, state="disabled")
-        self.export_button.grid(row=0, column=7, rowspan=2, padx=(4, 12), pady=10)
+        self.export_button.grid(row=0, column=8, rowspan=2, padx=(4, 12), pady=10)
 
         content = tk.Frame(self.root, bg=COLORS["page"])
         content.grid(row=2, column=0, sticky="nsew", padx=14, pady=(0, 10))
@@ -587,7 +664,7 @@ class KneeMeasurementApp:
 
         model_menu = tk.Menu(menubar, tearoff=False)
         model_menu.add_command(label="AIモデルファイルを選択…", command=self.browse_weight)
-        model_menu.add_command(label="標準モデルに戻す", command=self.restore_builtin_model)
+        model_menu.add_command(label="自動判定に戻す", command=self.restore_builtin_model)
         menubar.add_cascade(label="AIモデル", menu=model_menu)
 
         help_menu = tk.Menu(menubar, tearoff=False)
@@ -613,22 +690,31 @@ class KneeMeasurementApp:
             self.model_button.configure(state="disabled")
             self.rerun_button.configure(state="disabled")
             self.side_combo.configure(state="disabled")
+            self.model_combo.configure(state="disabled")
         else:
             self.progress.stop()
             self.open_button.configure(state="normal")
             self.model_button.configure(state="normal")
             self.side_combo.configure(state="readonly")
-            self.rerun_button.configure(state="normal" if self.raw_path and self.service else "disabled")
+            self.model_combo.configure(state="readonly")
+            self.rerun_button.configure(
+                state="normal" if self.raw_path and self._model_selection_is_active() else "disabled"
+            )
         self._refresh_action_states()
 
     def _refresh_action_states(self) -> None:
-        has_result = self.analysis is not None and self.measurement is not None and not self.busy
+        model_ready = self._model_selection_is_active()
+        has_result = self.analysis is not None and self.measurement is not None and not self.busy and model_ready
         self.export_button.configure(state="normal" if has_result else "disabled")
-        self.reset_button.configure(state="normal" if self.analysis is not None and not self.busy else "disabled")
-        self.undo_button.configure(state="normal" if self.history and not self.busy else "disabled")
+        self.reset_button.configure(
+            state="normal" if self.analysis is not None and not self.busy and model_ready else "disabled"
+        )
+        self.undo_button.configure(state="normal" if self.history and not self.busy and model_ready else "disabled")
 
     def _set_model_unavailable(self, error: str) -> None:
         self.model_badge_var.set("モデル：読み込み不可")
+        if hasattr(self, "model_source_var"):
+            self.model_source_var.set("モデル選択：読み込み不可")
         self.model_detail_var.set(error)
         self.warning_title_var.set("モデル設定エラー")
         self._set_warning_text([error])
@@ -636,16 +722,153 @@ class KneeMeasurementApp:
         self.notebook.tab(self.quality_tab, text="確認事項（1）・AIモデル")
         self.status_var.set(f"モデルを使用できません：{error}")
 
+    def _resolve_model_selection(self, requested_mode: str) -> ModelSelection:
+        fallback = self.config.auto_fallback_model_key if self.config is not None else "mixed"
+        sources: tuple[object, ...] = (self.raw_path,) if self.raw_path is not None else ()
+        return resolve_model_selection(
+            requested_mode,
+            self.model_specs,
+            *sources,
+            fallback_model_key=fallback,
+        )
+
+    @staticmethod
+    def _model_cache_key(model_key: str, spec: ModelSpec) -> str:
+        if model_key == "external":
+            return f"external:{spec.checkpoint}"
+        return model_key
+
+    def _set_model_selection(self, selection: ModelSelection) -> None:
+        self.model_selection = selection
+        if selection.requested_mode in MODEL_MODE_LABELS:
+            self.model_mode_var.set(MODEL_MODE_LABELS[selection.requested_mode])
+        elif selection.model_key == "external":
+            self.model_mode_var.set("外部モデル")
+        self._update_model_source_display()
+
+    def _update_model_source_display(self) -> None:
+        if not hasattr(self, "model_source_var"):
+            return
+        selection = getattr(
+            self,
+            "model_selection",
+            ModelSelection("auto", "mixed", "auto_fallback_unknown"),
+        )
+        requested = (
+            "自動判定"
+            if selection.requested_mode == "auto"
+            else MODEL_SHORT_LABELS.get(selection.model_key, selection.model_key)
+        )
+        source = MODEL_SOURCE_LABELS.get(selection.source, selection.source)
+        target = MODEL_SHORT_LABELS.get(selection.model_key, selection.model_key)
+        pending = getattr(self, "pending_model_key", None)
+        if pending is not None:
+            self.model_source_var.set(f"モデル選択：{requested} → {target}（{source}・読み込み中）")
+            return
+        service = getattr(self, "service", None)
+        if service is None:
+            self.model_source_var.set(f"モデル選択：{requested} → {target}（{source}）")
+            return
+        info = service.adapter.info
+        active = MODEL_SHORT_LABELS.get(getattr(self, "active_model_key", None), "外部")
+        self.model_source_var.set(
+            f"モデル選択：{requested} → 使用中 {active}・{info.short_hash}（{source}）"
+        )
+
+    def _persist_model_choice(
+        self,
+        action: str | None,
+        spec: ModelSpec,
+        checkpoint_sha256: str,
+    ) -> None:
+        if action is None:
+            return
+        try:
+            if action == "save":
+                save_model_preference(spec, expected_sha256=checkpoint_sha256)
+            elif action == "clear":
+                clear_model_preference()
+            self.preference_warning = None
+        except Exception as exc:
+            self.preference_warning = f"AIモデルは読み込まれましたが、選択内容を保存できません：{exc}"
+
+    def _activate_model_selection(
+        self,
+        selection: ModelSelection,
+        *,
+        startup: bool = False,
+        preference_action: str | None = None,
+        run_inference: bool = True,
+    ) -> None:
+        spec = self.model_specs[selection.model_key]
+        self._set_model_selection(selection)
+        cache_key = self._model_cache_key(selection.model_key, spec)
+        cached = self.model_cache.get(cache_key)
+        if cached is None or cached[0] != spec:
+            self._start_model_load(
+                spec,
+                startup=startup,
+                preference_action=preference_action,
+                model_key=selection.model_key,
+                selection=selection,
+                run_inference=run_inference,
+            )
+            return
+
+        self.task_id += 1
+        self.pending_model_key = None
+        self.model_spec, self.service = cached
+        self.active_model_key = selection.model_key
+        info = self.service.adapter.info
+        self._persist_model_choice(preference_action, self.model_spec, info.checkpoint_sha256)
+        if self.raw_path is not None:
+            self._clear_analysis(keep_raw=True)
+        self._update_model_badge()
+        self._update_model_details()
+        self._set_busy(False, "検証済みのAIモデルを切り替えました。")
+        if run_inference and self.raw_path is not None:
+            self._start_inference()
+
+    def _model_selection_is_active(self) -> bool:
+        if not hasattr(self, "service"):
+            return True
+        if self.service is None or getattr(self, "pending_model_key", None) is not None:
+            return False
+        selection = getattr(self, "model_selection", None)
+        active_model_key = getattr(self, "active_model_key", None)
+        if selection is None or active_model_key is None:
+            return True
+        return active_model_key == selection.model_key
+
     def _start_model_load(
         self,
         spec: ModelSpec,
         startup: bool = False,
         preference_action: str | None = None,
+        model_key: str | None = None,
+        selection: ModelSelection | None = None,
+        run_inference: bool = True,
     ) -> None:
+        model_key = model_key or "external"
+        selection = selection or ModelSelection(model_key, model_key, "manual_override")
+        self._set_model_selection(selection)
+        self.pending_model_key = model_key
+        if self.raw_path is not None:
+            # A result produced by the previous weight must never remain
+            # exportable while a different model is being validated.
+            self._clear_analysis(keep_raw=True)
         self.task_id += 1
         task_id = self.task_id
         self._set_busy(True, "AIモデルを検証して読み込んでいます…")
-        self.model_badge_var.set("モデル：読み込み中…")
+        if self.service is None:
+            self.model_badge_var.set(f"モデル：{MODEL_SHORT_LABELS.get(model_key, model_key)} を読み込み中…")
+        else:
+            active_info = self.service.adapter.info
+            active_label = MODEL_SHORT_LABELS.get(self.active_model_key, "外部")
+            self.model_badge_var.set(
+                f"読込中：{MODEL_SHORT_LABELS.get(model_key, model_key)}・現在 {active_label} {active_info.short_hash}"
+            )
+        self._update_model_source_display()
 
         def worker() -> None:
             try:
@@ -664,17 +887,28 @@ class KneeMeasurementApp:
                     "spec": spec,
                     "startup": startup,
                     "preference_action": preference_action,
+                    "model_key": model_key,
+                    "selection": selection,
+                    "run_inference": run_inference,
                 }
                 self.task_events.put({"id": task_id, "kind": "model", "ok": True, "value": payload})
             except Exception as exc:
                 self.task_events.put(
-                    {"id": task_id, "kind": "model", "ok": False, "error": str(exc), "startup": startup}
+                    {
+                        "id": task_id,
+                        "kind": "model",
+                        "ok": False,
+                        "error": str(exc),
+                        "startup": startup,
+                        "model_key": model_key,
+                        "selection": selection,
+                    }
                 )
 
         threading.Thread(target=worker, name="knee-model-loader", daemon=True).start()
 
     def _start_inference(self) -> None:
-        if self.raw_path is None or self.service is None:
+        if self.raw_path is None or not self._model_selection_is_active():
             return
         try:
             side = self._effective_side()
@@ -697,16 +931,42 @@ class KneeMeasurementApp:
         task_id = self.task_id
         raw_path = self.raw_path
         service = self.service
+        model_key = getattr(self, "active_model_key", None)
+        checkpoint_sha256 = service.adapter.info.checkpoint_sha256
+        model_selection = self.model_selection
         self._clear_analysis(keep_raw=True)
         self._set_busy(True, f"{raw_path.name}を解析しています（{side}側）…")
         self.result_state_var.set("AI解析中")
 
         def worker() -> None:
             try:
-                value = service.analyze_path(raw_path, requested_side=explicit_side)
-                self.task_events.put({"id": task_id, "kind": "inference", "ok": True, "value": value})
+                value = replace(
+                    service.analyze_path(raw_path, requested_side=explicit_side),
+                    model_selection=model_selection,
+                )
+                self.task_events.put(
+                    {
+                        "id": task_id,
+                        "kind": "inference",
+                        "ok": True,
+                        "value": value,
+                        "raw_path": raw_path,
+                        "model_key": model_key,
+                        "checkpoint_sha256": checkpoint_sha256,
+                    }
+                )
             except Exception as exc:
-                self.task_events.put({"id": task_id, "kind": "inference", "ok": False, "error": str(exc)})
+                self.task_events.put(
+                    {
+                        "id": task_id,
+                        "kind": "inference",
+                        "ok": False,
+                        "error": str(exc),
+                        "raw_path": raw_path,
+                        "model_key": model_key,
+                        "checkpoint_sha256": checkpoint_sha256,
+                    }
+                )
 
         threading.Thread(target=worker, name="knee-inference", daemon=True).start()
 
@@ -729,12 +989,12 @@ class KneeMeasurementApp:
     def _finish_model_event(self, event: dict[str, Any]) -> None:
         if not event["ok"]:
             error = event["error"]
+            self.pending_model_key = None
             if (
                 self.service is None
                 and event.get("startup")
                 and self.default_model_spec is not None
-                and self.model_spec is not None
-                and self.model_spec.checkpoint != self.default_model_spec.checkpoint
+                and event.get("model_key") == "external"
             ):
                 self.preference_warning = (
                     "前回選択した外部AIモデルを読み込めなかったため、標準モデルに戻しました："
@@ -744,47 +1004,60 @@ class KneeMeasurementApp:
                     clear_model_preference()
                 except Exception as exc:
                     self.preference_warning += f"（設定の消去にも失敗しました：{exc}）"
-                self.model_spec = self.default_model_spec
                 self.status_var.set(self.preference_warning)
-                self._start_model_load(self.default_model_spec, startup=False)
+                fallback = self._resolve_model_selection("auto")
+                self._activate_model_selection(fallback, startup=False, run_inference=False)
                 return
             if self.service is None:
                 self._set_model_unavailable(error)
             else:
                 self._update_model_badge()
-                self.status_var.set("新しいAIモデルを読み込めませんでした。現在のモデルを継続して使用します。")
+                self._update_model_details()
+                self._update_model_source_display()
+                self.status_var.set("新しいAIモデルを読み込めませんでした。以前の解析結果は消去しました。")
                 messagebox.showerror(
                     "AIモデルの読み込みに失敗しました",
-                    f"新しいAIモデルは適用されていません。現在のモデルは引き続き使用できます。\n\n{error}",
+                    f"新しいAIモデルは適用されていません。"
+                    "以前の結果は消去しました。使用するモデルを再度選択してください。"
+                    f"\n\n{error}",
                 )
             self._set_busy(False)
             return
 
         payload = event["value"]
         spec = payload["spec"]
-        self.service = payload["service"]
+        service = payload["service"]
+        model_key = payload.get("model_key") or getattr(self, "pending_model_key", None) or "external"
+        selection = payload.get("selection")
+        if selection is not None:
+            self._set_model_selection(selection)
+        self.pending_model_key = None
+        if isinstance(spec, ModelSpec) and model_key != "external":
+            cache_key = self._model_cache_key(model_key, spec)
+            if not hasattr(self, "model_cache"):
+                self.model_cache = {}
+            self.model_cache[cache_key] = (spec, service)
+        self.service = service
         self.model_spec = spec
+        self.active_model_key = model_key
         # A successful model switch invalidates every result produced by the
         # previous service.  Clear it before attempting the rerun so that an
         # unresolved side cannot leave old coordinates under the new badge.
         if self.raw_path is not None:
             self._clear_analysis(keep_raw=True)
         preference_action = payload.get("preference_action")
-        try:
-            if preference_action == "save":
-                save_model_preference(
-                    spec,
-                    expected_sha256=payload["info"].checkpoint_sha256,
-                )
-                self.preference_warning = None
-            elif preference_action == "clear":
-                clear_model_preference()
-                self.preference_warning = None
-        except Exception as exc:
-            self.preference_warning = f"AIモデルは読み込まれましたが、選択内容を保存できません：{exc}"
+        if preference_action is not None:
+            self._persist_model_choice(
+                preference_action,
+                spec,
+                payload["info"].checkpoint_sha256,
+            )
         self._update_model_badge()
         self._update_model_details()
+        self._update_model_source_display()
         ready_status = "AIモデルの準備が完了しました。片側下肢全長X線画像を開いてください。"
+        if self.raw_path is not None and not payload.get("run_inference", True):
+            ready_status = "AIモデルの準備が完了しました。LまたはRを選択してください。"
         if self.preference_warning:
             ready_status = self.preference_warning
             self.warning_title_var.set("AIモデル設定の警告")
@@ -797,10 +1070,20 @@ class KneeMeasurementApp:
             self._set_warning_banner("確認事項：解析後に表示します", "neutral", False)
             self.notebook.tab(self.quality_tab, text="確認事項（0）・AIモデル")
         self._set_busy(False, ready_status)
-        if self.raw_path is not None:
+        if payload.get("run_inference", True) and self.raw_path is not None:
             self._start_inference()
 
     def _finish_inference_event(self, event: dict[str, Any]) -> None:
+        event_path = event.get("raw_path")
+        if event_path is not None and Path(event_path) != self.raw_path:
+            return
+        event_model_key = event.get("model_key")
+        if event_model_key is not None and event_model_key != getattr(self, "active_model_key", None):
+            return
+        if event["ok"] and event.get("checkpoint_sha256"):
+            result_info = event["value"].prediction.model_info
+            if result_info.checkpoint_sha256 != event["checkpoint_sha256"]:
+                return
         self._set_busy(False)
         if not event["ok"]:
             error = event["error"]
@@ -834,8 +1117,11 @@ class KneeMeasurementApp:
         self._refresh_coordinate_table()
         self._update_quality_display(select_details=True)
         self.result_state_var.set("AI推定結果・要確認")
+        model_label = MODEL_SHORT_LABELS.get(getattr(self, "active_model_key", None), "外部")
+        model_id = analysis.prediction.model_info.short_hash
         self.status_var.set(
-            f"解析完了：{analysis.side}側・{analysis.total_elapsed_ms:.0f} ms。左側画像のマーカーをドラッグして修正できます。"
+            f"解析完了：{analysis.side}側・{model_label} {model_id}・{analysis.total_elapsed_ms:.0f} ms。"
+            "左側画像のマーカーをドラッグして修正できます。"
         )
         self._refresh_action_states()
 
@@ -844,8 +1130,9 @@ class KneeMeasurementApp:
             self.model_badge_var.set("モデル：未読み込み")
             return
         info = self.service.adapter.info
-        version_label = info.version if len(info.version) <= 24 else f"{info.version[:21]}…"
-        self.model_badge_var.set(f"モデル準備完了・{version_label}・{info.device.upper()}")
+        model_label = MODEL_SHORT_LABELS.get(getattr(self, "active_model_key", None), "外部")
+        self.model_badge_var.set(f"使用モデル：{model_label}・{info.short_hash}・{info.device.upper()}")
+        self._update_model_source_display()
 
     def _update_model_details(self) -> None:
         if self.service is None:
@@ -864,9 +1151,22 @@ class KneeMeasurementApp:
             "legacy_assumed_contract": "旧形式（互換読み込み）",
             "checkpoint_manifest": "埋め込みマニフェスト",
         }.get(info.metadata_source, info.metadata_source)
+        selection = getattr(
+            self,
+            "model_selection",
+            ModelSelection("auto", "mixed", "auto_fallback_unknown"),
+        )
+        requested_label = (
+            "自動判定"
+            if selection.requested_mode == "auto"
+            else MODEL_SHORT_LABELS.get(selection.model_key, selection.model_key)
+        )
+        selected_label = MODEL_SHORT_LABELS.get(selection.model_key, selection.model_key)
+        source_label = MODEL_SOURCE_LABELS.get(selection.source, selection.source)
         self.model_detail_var.set(
             f"{info.display_name}・{info.version}・入力 {info.input_width}×{info.input_height}\n"
-            f"実行環境：{info.device.upper()}・モデルID：{info.short_hash}\n"
+            f"選択：{requested_label} → {selected_label}（{source_label}）\n"
+            f"実行環境：{info.device.upper()}・weight SHA-256：{info.checkpoint_sha256}\n"
             f"対象：{info.cohort}・メタデータ：{metadata_label}{metric_text}"
         )
 
@@ -888,14 +1188,24 @@ class KneeMeasurementApp:
 
     def open_path(self, path: Path, requested_side: str | None = None) -> None:
         path = Path(path).expanduser().resolve()
+        self.task_id = getattr(self, "task_id", 0) + 1
         self._clear_analysis(keep_raw=False)
-        self.path_var.set(path.name)
         self.raw_path = path
         self.path_var.set(path.name)
         explicit = normalize_measurement_side(requested_side)
         inferred = infer_knee_side_from_sources(path)
         self.side_var.set(explicit or inferred or "自動判定")
         self.side_source_hint = "explicit" if explicit else ("filename" if inferred else "unknown")
+        side_is_resolved = explicit is not None or inferred is not None
+
+        if getattr(self, "model_specs", None):
+            selection = self._resolve_model_selection("auto")
+            self._activate_model_selection(selection, run_inference=side_is_resolved)
+        elif side_is_resolved and self.service is not None:
+            # Backward-compatible path for programmatic callers using the
+            # legacy single-model configuration.
+            self._start_inference()
+
         if explicit is None and inferred is None:
             self.result_state_var.set("左右の選択待ち")
             self.status_var.set("画像を選択しました。ファイル名から左右を判定できないため、LまたはRを選択してください。")
@@ -904,17 +1214,30 @@ class KneeMeasurementApp:
             self._set_warning_banner("⚠ 左右を選択してください", "warning", True)
             self.notebook.tab(self.quality_tab, text="確認事項（1）・AIモデル")
             return
+        if getattr(self, "model_specs", None):
+            return
         if self.service is None:
             self.status_var.set("画像を選択しました。AIモデルの準備完了後に自動で解析します。")
-            return
-        self._start_inference()
 
     def rerun_inference(self) -> None:
-        if not self.busy and self.raw_path is not None and self.service is not None:
+        if not self.busy and self.raw_path is not None and self._model_selection_is_active():
             self._start_inference()
 
+    def _on_model_mode_changed(self, _event: object | None = None) -> None:
+        if self.busy:
+            return
+        mode = MODEL_LABEL_TO_MODE.get(self.model_mode_var.get())
+        if mode is None:
+            return
+        try:
+            selection = self._resolve_model_selection(mode)
+        except Exception as exc:
+            messagebox.showerror("AIモデルを選択できません", str(exc))
+            return
+        self._activate_model_selection(selection, run_inference=self.raw_path is not None)
+
     def browse_weight(self) -> None:
-        if self.busy or self.model_spec is None:
+        if self.busy or self.default_model_spec is None:
             return
         filename = filedialog.askopenfilename(
             title="互換性のあるAIモデルファイルを選択",
@@ -923,7 +1246,7 @@ class KneeMeasurementApp:
         if not filename:
             return
         path = Path(filename).expanduser().resolve()
-        spec = model_spec_with_checkpoint(self.model_spec, path)
+        spec = model_spec_with_checkpoint(self.default_model_spec, path)
         spec = replace(
             spec,
             display_name=f"外部モデル：{path.stem}",
@@ -931,12 +1254,24 @@ class KneeMeasurementApp:
             cohort="対象データ未指定（外部モデル）",
             options={**spec.options, "allow_legacy_checkpoint": False},
         )
-        self._start_model_load(spec, startup=False, preference_action="save")
+        selection = ModelSelection("external", "external", "external_model")
+        self._start_model_load(
+            spec,
+            startup=False,
+            preference_action="save",
+            model_key="external",
+            selection=selection,
+        )
 
     def restore_builtin_model(self) -> None:
-        if self.busy or self.default_model_spec is None:
+        if self.busy or not self.model_specs:
             return
-        self._start_model_load(self.default_model_spec, startup=False, preference_action="clear")
+        selection = self._resolve_model_selection("auto")
+        self._activate_model_selection(
+            selection,
+            preference_action="clear",
+            run_inference=self.raw_path is not None,
+        )
 
     def _effective_side(self) -> str:
         if self.raw_path is None:
@@ -1266,7 +1601,7 @@ class KneeMeasurementApp:
         self._update_quality_display()
 
     def undo_edit(self) -> None:
-        if self.busy or not self.history:
+        if self.busy or not self.history or not self._model_selection_is_active():
             return
         self._restore_snapshot(self.history.pop())
         self.input_view.redraw_overlay()
@@ -1275,7 +1610,7 @@ class KneeMeasurementApp:
         self._refresh_action_states()
 
     def reset_to_prediction(self) -> None:
-        if self.busy or self.analysis is None:
+        if self.busy or self.analysis is None or not self._model_selection_is_active():
             return
         self.history.append(self._snapshot())
         self.points = clone_points(self.analysis.prediction.points)
@@ -1370,7 +1705,12 @@ class KneeMeasurementApp:
         self.warning_text.configure(state="disabled")
 
     def export_result(self) -> None:
-        if self.analysis is None or self.measurement is None or self.busy:
+        if (
+            self.analysis is None
+            or self.measurement is None
+            or self.busy
+            or not self._model_selection_is_active()
+        ):
             return
         initial_dir = self.raw_path.parent if self.raw_path is not None else Path.home()
         directory = filedialog.askdirectory(title="結果の保存先を選択", initialdir=str(initial_dir))
@@ -1415,6 +1755,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--side", choices=("L", "R", "Auto"), default="Auto")
     parser.add_argument("--validate-model", action="store_true", help="Validate the configured model and exit.")
     parser.add_argument(
+        "--validate-models",
+        action="store_true",
+        help="Validate every configured built-in model and exit.",
+    )
+    parser.add_argument(
+        "--model-mode",
+        choices=("auto", "bone", "tka", "mixed"),
+        default="auto",
+        help="Model route used by the headless smoke test.",
+    )
+    parser.add_argument(
         "--smoke-test-image",
         type=Path,
         default=None,
@@ -1425,27 +1776,55 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    if args.validate_model or args.smoke_test_image is not None:
+    if args.validate_model or args.validate_models or args.smoke_test_image is not None:
         try:
             config = load_app_config(args.config)
-            adapter = create_model_adapter(config.model)
-            info = adapter.load()
-            if args.smoke_test_image is not None:
+            services: dict[str, KneeAnalysisService] = {}
+            infos: dict[str, Any] = {}
+
+            def load_model(model_key: str) -> tuple[KneeAnalysisService, Any]:
+                if model_key in services:
+                    return services[model_key], infos[model_key]
+                spec = config.models[model_key]
+                adapter = create_model_adapter(spec)
+                info = adapter.load()
                 if info.device != "cpu":
-                    raise RuntimeError(f"配布用スモークテストはCPU実行が必要ですが、{info.device}が選択されました。")
-                threshold = float(config.model.options.get("low_peak_threshold", 0.35))
+                    raise RuntimeError(
+                        f"Release validation requires CPU execution; model {model_key} selected {info.device}."
+                    )
                 service = KneeAnalysisService(
                     adapter,
-                    low_peak_threshold=threshold,
+                    low_peak_threshold=float(spec.options.get("low_peak_threshold", 0.35)),
                     render_component_images=False,
                 )
+                services[model_key] = service
+                infos[model_key] = info
+                return service, info
+
+            if args.validate_models:
+                for key in config.models:
+                    load_model(key)
+            elif args.validate_model:
+                load_model(config.default_model_key)
+
+            if args.smoke_test_image is not None:
+                selection = resolve_model_selection(
+                    args.model_mode,
+                    config.models,
+                    args.smoke_test_image,
+                    fallback_model_key=config.auto_fallback_model_key,
+                )
+                service, info = load_model(selection.model_key)
                 requested_side = normalize_measurement_side(args.side)
-                analysis = service.analyze_path(args.smoke_test_image, requested_side=requested_side)
+                analysis = replace(
+                    service.analyze_path(args.smoke_test_image, requested_side=requested_side),
+                    model_selection=selection,
+                )
                 if len(analysis.prediction.points) != 8:
-                    raise RuntimeError("スモークテストで8個のランドマークを取得できませんでした。")
+                    raise RuntimeError("Smoke test did not produce eight landmarks.")
                 line_endpoint_count = sum(len(endpoints) for endpoints in analysis.prediction.lines.values())
                 if line_endpoint_count != 4:
-                    raise RuntimeError("スモークテストで2本の関節線を取得できませんでした。")
+                    raise RuntimeError("Smoke test did not produce four joint-line endpoints.")
                 with tempfile.TemporaryDirectory(prefix="knee-xray-smoke-") as directory:
                     output_dir = Path(directory)
                     json_path = output_dir / "smoke_measurement.json"
@@ -1467,6 +1846,9 @@ def main() -> None:
                     summary = {
                         "status": "ok",
                         "device": info.device,
+                        "requested_model_mode": selection.requested_mode,
+                        "resolved_model_key": selection.model_key,
+                        "model_selection_source": selection.source,
                         "model_sha256": info.checkpoint_sha256,
                         "side": analysis.side,
                         "point_count": len(analysis.prediction.points),
@@ -1476,12 +1858,20 @@ def main() -> None:
                         "json_bytes": json_path.stat().st_size,
                         "overlay_bytes": overlay_path.stat().st_size,
                     }
-                print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
+                print(json.dumps(summary, ensure_ascii=True, indent=2, sort_keys=True))
                 return
         except Exception as exc:
-            print(f"モデル検証に失敗しました：{exc}")
+            escaped_error = str(exc).encode("unicode_escape", errors="backslashreplace").decode("ascii")
+            print(f"Model validation failed: {escaped_error}")
             raise SystemExit(2) from exc
-        print(json.dumps(asdict(info), ensure_ascii=False, indent=2, sort_keys=True))
+        if args.validate_models:
+            validation_payload: dict[str, Any] = {
+                "status": "ok",
+                "models": {key: asdict(info) for key, info in infos.items()},
+            }
+        else:
+            validation_payload = asdict(infos[config.default_model_key])
+        print(json.dumps(validation_payload, ensure_ascii=True, indent=2, sort_keys=True))
         return
     root = tk.Tk()
     app = KneeMeasurementApp(root, config_path=args.config)

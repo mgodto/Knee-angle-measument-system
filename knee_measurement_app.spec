@@ -9,25 +9,39 @@ from PyInstaller.utils.hooks import copy_metadata
 
 project_root = Path(SPECPATH).resolve()
 target_arch = os.environ.get("KNEE_TARGET_ARCH") or None
+entry_script_name = (
+    "knee_measurement_app_windows.py"
+    if sys.platform == "win32"
+    else "knee_measurement_app.py"
+)
+entry_script = project_root / entry_script_name
 config_path = project_root / "knee_measurement_app.json"
-checkpoint_path = project_root / "models" / "current.pt"
+checkpoint_paths = tuple(
+    project_root / "models" / filename
+    for filename in ("bone.pt", "tka.pt", "mixed.pt")
+)
 
+if not entry_script.is_file():
+    raise FileNotFoundError(
+        f"Missing build entrypoint: {entry_script}. "
+        "On Windows, run generate_windows_english_entrypoint.py first."
+    )
 if not config_path.is_file():
     raise FileNotFoundError(f"Missing app configuration: {config_path}")
-if not checkpoint_path.is_file():
+missing_checkpoints = [str(path) for path in checkpoint_paths if not path.is_file()]
+if missing_checkpoints:
     raise FileNotFoundError(
-        "Missing default checkpoint. Put the production-compatible weight at "
-        f"{checkpoint_path} before building."
+        "Missing required bundled checkpoint(s): " + ", ".join(missing_checkpoints)
     )
 
 hiddenimports = ["knee_keypoint_model"]
 datas = [
     (str(config_path), "."),
-    (str(checkpoint_path), "models"),
+    *((str(checkpoint_path), "models") for checkpoint_path in checkpoint_paths),
 ] + copy_metadata("torch")
 
 a = Analysis(
-    ["knee_measurement_app.py"],
+    [str(entry_script)],
     pathex=[str(project_root)],
     binaries=[],
     datas=datas,
@@ -92,8 +106,8 @@ if sys.platform == "darwin":
         info_plist={
             "CFBundleName": "下肢全長X線自動計測",
             "CFBundleDisplayName": "下肢全長X線 自動計測",
-            "CFBundleShortVersionString": "0.2.4",
-            "CFBundleVersion": "6",
+            "CFBundleShortVersionString": "0.3.0",
+            "CFBundleVersion": "7",
             "NSHighResolutionCapable": True,
             "LSMinimumSystemVersion": "12.1",
         },

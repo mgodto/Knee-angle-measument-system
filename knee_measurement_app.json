@@ -1,8 +1,10 @@
 {
   "schema_version": 1,
+  "default_model_key": "mixed",
+  "auto_fallback_model_key": "mixed",
   "model": {
     "adapter": "small_heatmap_v1",
-    "checkpoint": "models/current.pt",
+    "checkpoint": "models/mixed.pt",
     "display_name": "膝関節ランドマーク推定モデル（Bone/TKA Mixed）",
     "version": "auto",
     "cohort": "bone-tka-mixed",
@@ -10,6 +12,44 @@
     "options": {
       "low_peak_threshold": 0.35,
       "allow_legacy_checkpoint": false
+    }
+  },
+  "models": {
+    "bone": {
+      "adapter": "small_heatmap_v1",
+      "checkpoint": "models/bone.pt",
+      "display_name": "膝関節ランドマーク推定モデル（Bone・人工関節なし）",
+      "version": "auto",
+      "cohort": "confirmed-bone",
+      "device": "cpu",
+      "options": {
+        "low_peak_threshold": 0.35,
+        "allow_legacy_checkpoint": false
+      }
+    },
+    "tka": {
+      "adapter": "small_heatmap_v1",
+      "checkpoint": "models/tka.pt",
+      "display_name": "膝関節ランドマーク推定モデル（TKA・人工関節あり）",
+      "version": "auto",
+      "cohort": "tka-cohort",
+      "device": "cpu",
+      "options": {
+        "low_peak_threshold": 0.35,
+        "allow_legacy_checkpoint": false
+      }
+    },
+    "mixed": {
+      "adapter": "small_heatmap_v1",
+      "checkpoint": "models/mixed.pt",
+      "display_name": "膝関節ランドマーク推定モデル（Bone/TKA Mixed）",
+      "version": "auto",
+      "cohort": "bone-tka-mixed",
+      "device": "cpu",
+      "options": {
+        "low_peak_threshold": 0.35,
+        "allow_legacy_checkpoint": false
+      }
     }
   }
 }
