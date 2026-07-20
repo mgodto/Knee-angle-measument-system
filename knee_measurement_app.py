@@ -28,6 +28,7 @@ from knee_model_runtime import (
     SideRequiredError,
     clear_model_preference,
     combine_warnings,
+    coordinate_display_name,
     coordinate_geometry_warnings,
     create_model_adapter,
     export_record,
@@ -49,7 +50,7 @@ from measure_angles import (
 )
 
 
-APP_VERSION = "0.2.3"
+APP_VERSION = "0.2.4"
 APP_TITLE = "下肢全長X線 自動計測"
 
 COLORS = {
@@ -72,16 +73,7 @@ COLORS = {
     "selected": "#fde047",
 }
 
-POINT_LABELS = {
-    "hip": "股関節中心",
-    "upper_left": "大腿骨関節線・画像左点",
-    "upper_center": "大腿骨関節線・中央点",
-    "upper_right": "大腿骨関節線・画像右点",
-    "lower_left": "脛骨関節線・画像左点",
-    "lower_center": "脛骨関節線・中央点",
-    "lower_right": "脛骨関節線・画像右点",
-    "ankle": "足関節中心",
-}
+POINT_LABELS = {name: coordinate_display_name(name) for name in ANNOTATION_POINT_NAMES}
 LINE_LABELS = {
     "upper_line_p1": "大腿骨関節線端点 1",
     "upper_line_p2": "大腿骨関節線端点 2",

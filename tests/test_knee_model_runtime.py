@@ -27,6 +27,8 @@ from knee_model_runtime import (
     SmallHeatmapV1Adapter,
     export_record,
     clear_model_preference,
+    coordinate_display_name,
+    coordinate_geometry_warnings,
     load_app_config,
     load_model_preference,
     measurement_from_coordinates,
@@ -302,6 +304,69 @@ class GuiModelSwitchTests(unittest.TestCase):
 
 
 class AnalysisServiceTests(unittest.TestCase):
+    def test_point_display_names_use_ids_without_screen_left_right_claims(self) -> None:
+        for point_id, name in enumerate(EXPECTED_KEYPOINT_NAMES[:8], start=1):
+            label = coordinate_display_name(name)
+            self.assertTrue(label.startswith(f"点{point_id}・"))
+            self.assertNotIn("画像左", label)
+            self.assertNotIn("画像右", label)
+
+    def test_center_landmarks_outside_outer_points_warn_for_affected_angles(self) -> None:
+        prediction = FakeAdapter().predict(np.zeros((800, 400, 3), dtype=np.uint8))
+        points = {name: point.copy() for name, point in prediction.points.items()}
+        points["upper_center"][0] = 350.0
+        before = {name: point.copy() for name, point in points.items()}
+
+        warnings = coordinate_geometry_warnings(points, prediction.lines, (800, 400, 3))
+
+        self.assertTrue(any("点3" in warning and "mLDFA" in warning and "HKA" in warning for warning in warnings))
+        self.assertFalse(any("点6" in warning and "MPTA" in warning for warning in warnings))
+        for name in points:
+            np.testing.assert_array_equal(points[name], before[name])
+
+        points = {name: point.copy() for name, point in prediction.points.items()}
+        points["lower_center"][0] = 350.0
+        warnings = coordinate_geometry_warnings(points, prediction.lines, (800, 400, 3))
+        self.assertTrue(any("点6" in warning and "MPTA" in warning and "HKA" in warning for warning in warnings))
+
+    def test_valid_center_geometry_has_no_center_position_warning(self) -> None:
+        prediction = FakeAdapter().predict(np.zeros((800, 400, 3), dtype=np.uint8))
+
+        warnings = coordinate_geometry_warnings(
+            prediction.points,
+            prediction.lines,
+            (800, 400, 3),
+        )
+
+        self.assertFalse(any("水平方向の間にありません" in warning for warning in warnings))
+
+    def test_real_right_to_left_outer_point_orientation_has_no_center_warning(self) -> None:
+        prediction = FakeAdapter().predict(np.zeros((800, 400, 3), dtype=np.uint8))
+        points = {name: point.copy() for name, point in prediction.points.items()}
+        points["upper_left"][0], points["upper_right"][0] = (
+            points["upper_right"][0],
+            points["upper_left"][0],
+        )
+        points["lower_left"][0], points["lower_right"][0] = (
+            points["lower_right"][0],
+            points["lower_left"][0],
+        )
+
+        warnings = coordinate_geometry_warnings(points, prediction.lines, (800, 400, 3))
+
+        self.assertFalse(any("水平方向の間にありません" in warning for warning in warnings))
+
+    def test_reversed_center_vertical_order_names_points_three_and_six(self) -> None:
+        prediction = FakeAdapter().predict(np.zeros((800, 400, 3), dtype=np.uint8))
+        for upper_y in (420.0, 430.0):
+            with self.subTest(upper_y=upper_y):
+                points = {name: point.copy() for name, point in prediction.points.items()}
+                points["upper_center"][1] = upper_y
+
+                warnings = coordinate_geometry_warnings(points, prediction.lines, (800, 400, 3))
+
+                self.assertTrue(any("点3" in warning and "点6" in warning and "上下方向" in warning for warning in warnings))
+
     def test_side_is_required_when_filename_has_no_laterality(self) -> None:
         with self.assertRaises(SideRequiredError):
             resolve_side(Path("patient.png"), None)

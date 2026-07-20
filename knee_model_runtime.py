@@ -52,14 +52,14 @@ LINE_ENDPOINT_NAMES = {
     "lower_line_p2": ("lower_line", "p2"),
 }
 COORDINATE_DISPLAY_NAMES = {
-    "hip": "股関節中心",
-    "upper_left": "大腿骨関節線・画像左点",
-    "upper_center": "大腿骨関節線・中央点",
-    "upper_right": "大腿骨関節線・画像右点",
-    "lower_left": "脛骨関節線・画像左点",
-    "lower_center": "脛骨関節線・中央点",
-    "lower_right": "脛骨関節線・画像右点",
-    "ankle": "足関節中心",
+    "hip": "点1・股関節中心",
+    "upper_left": "点2・大腿骨関節線点A",
+    "upper_center": "点3・大腿骨関節線中央点",
+    "upper_right": "点4・大腿骨関節線点B",
+    "lower_left": "点5・脛骨関節線点A",
+    "lower_center": "点6・脛骨関節線中央点",
+    "lower_right": "点7・脛骨関節線点B",
+    "ankle": "点8・足関節中心",
     "upper_line_p1": "大腿骨関節線端点1",
     "upper_line_p2": "大腿骨関節線端点2",
     "lower_line_p1": "脛骨関節線端点1",
@@ -667,12 +667,33 @@ def coordinate_geometry_warnings(
         labels = ", ".join(coordinate_display_name(name) for name in out_of_bounds)
         warnings.append(f"画像範囲外のランドマークがあります：{labels}")
 
+    center_checks = (
+        (
+            "upper_center",
+            "upper_left",
+            "upper_right",
+            "点3（大腿骨側中央点）が点2と点4の水平方向の間にありません。mLDFAとHKAを計算する前に位置を確認してください。",
+        ),
+        (
+            "lower_center",
+            "lower_left",
+            "lower_right",
+            "点6（脛骨側中央点）が点5と点7の水平方向の間にありません。MPTAとHKAを計算する前に位置を確認してください。",
+        ),
+    )
+    for center_name, outer_a_name, outer_b_name, message in center_checks:
+        center_x = float(points[center_name][0])
+        outer_a_x = float(points[outer_a_name][0])
+        outer_b_x = float(points[outer_b_name][0])
+        if not min(outer_a_x, outer_b_x) < center_x < max(outer_a_x, outer_b_x):
+            warnings.append(message)
+
     hip_y = float(points["hip"][1])
     upper_y = float(points["upper_center"][1])
     lower_y = float(points["lower_center"][1])
     ankle_y = float(points["ankle"][1])
-    if not (hip_y < upper_y <= lower_y < ankle_y):
-        warnings.append("ランドマークの上下方向の解剖学的順序が不自然です。位置を確認・修正してください。")
+    if not (hip_y < upper_y < lower_y < ankle_y):
+        warnings.append("点1・点3・点6・点8の上下方向の解剖学的順序が不自然です。位置を確認・修正してください。")
 
     if float(np.linalg.norm(points["hip"] - points["upper_center"])) < 8.0:
         warnings.append("大腿骨の機械軸を定義する2点が近すぎるため、角度を正しく計算できません。")

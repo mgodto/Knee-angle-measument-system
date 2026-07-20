@@ -3,9 +3,9 @@
   "model": {
     "adapter": "small_heatmap_v1",
     "checkpoint": "models/current.pt",
-    "display_name": "膝関節ランドマーク推定モデル",
+    "display_name": "膝関節ランドマーク推定モデル（Bone/TKA Mixed）",
     "version": "auto",
-    "cohort": "人工関節なし・一般骨格",
+    "cohort": "bone-tka-mixed",
     "device": "cpu",
     "options": {
       "low_peak_threshold": 0.35,

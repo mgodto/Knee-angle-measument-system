@@ -248,6 +248,13 @@ class P1GuiSafetyTests(unittest.TestCase):
         app._update_quality_display(select_details=True)
         app._show_quality_tab.assert_not_called()
 
+        app.points = {name: point.copy() for name, point in app.points.items()}
+        app.points["upper_center"][0] = 350.0
+        app._update_quality_display(select_details=True)
+        warning_lines = app._set_warning_text.call_args.args[0]
+        self.assertTrue(any("点3" in warning and "mLDFA" in warning for warning in warning_lines))
+        app._show_quality_tab.assert_called_once_with()
+
     def test_clear_analysis_resets_visible_warning_state(self) -> None:
         app = KneeMeasurementApp.__new__(KneeMeasurementApp)
         app.analysis = _analysis()
