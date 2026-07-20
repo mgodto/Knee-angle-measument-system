@@ -4,6 +4,9 @@ setlocal EnableExtensions
 cd /d %~dp0
 set PYTHONPATH=
 set PYTHONHOME=
+set PYTHONUTF8=1
+set PYTHONIOENCODING=utf-8
+chcp 65001 >nul
 
 set "APP_VERSION=0.2.4"
 set "RELEASE_DATE=20260720"
