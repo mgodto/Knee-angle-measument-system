@@ -72,11 +72,12 @@ def _is_allowed_member(name: str, expected_root: str, platform: str) -> bool:
 def _validate_config(
     handle: zipfile.ZipFile,
     config_member: str,
+    member_infos: dict[str, zipfile.ZipInfo],
     expected_models: dict[str, str],
     errors: list[str],
 ) -> None:
     try:
-        payload = json.loads(handle.read(config_member).decode("utf-8"))
+        payload = json.loads(handle.read(member_infos[config_member]).decode("utf-8"))
     except (KeyError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         errors.append(f"invalid bundled app configuration: {exc}")
         return
@@ -159,12 +160,14 @@ def main() -> None:
             errors.append("archive is empty")
 
         normalized_names: list[str] = []
+        member_infos: dict[str, zipfile.ZipInfo] = {}
         casefolded: dict[str, str] = {}
         for info in infos:
             raw_name = info.filename.replace("\\", "/")
             path = PurePosixPath(raw_name)
             normalized = path.as_posix().rstrip("/")
             normalized_names.append(normalized)
+            member_infos.setdefault(normalized, info)
             if path.is_absolute() or ".." in path.parts:
                 errors.append(f"unsafe path: {raw_name}")
             if not path.parts or path.parts[0] != args.expected_root:
@@ -200,7 +203,7 @@ def main() -> None:
                     errors.append(f"missing required member: {required}")
             if plist_member in normalized_names:
                 try:
-                    plist = plistlib.loads(handle.read(plist_member))
+                    plist = plistlib.loads(handle.read(member_infos[plist_member]))
                     version = str(plist.get("CFBundleShortVersionString", ""))
                     if version != args.expected_app_version:
                         errors.append(f"unexpected app version: {version}")
@@ -232,14 +235,17 @@ def main() -> None:
                 f"expected {sorted(expected_model_members)}, found {sorted(model_members)}"
             )
         for member, expected_digest in expected_model_members.items():
-            if member in normalized_names and sha256_bytes(handle.read(member)) != expected_digest:
+            if (
+                member in normalized_names
+                and sha256_bytes(handle.read(member_infos[member])) != expected_digest
+            ):
                 errors.append(f"bundled model SHA-256 mismatch: {member}")
 
         if config_member in normalized_names:
-            _validate_config(handle, config_member, expected_models, errors)
+            _validate_config(handle, config_member, member_infos, expected_models, errors)
         if readme_member in normalized_names:
             try:
-                readme = handle.read(readme_member).decode("utf-8")
+                readme = handle.read(member_infos[readme_member]).decode("utf-8")
             except (KeyError, UnicodeDecodeError) as exc:
                 errors.append(f"invalid doctor README: {exc}")
             else:

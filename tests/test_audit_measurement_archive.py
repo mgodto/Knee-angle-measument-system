@@ -67,20 +67,33 @@ class MeasurementArchiveAuditTests(unittest.TestCase):
         extra_members: dict[str, bytes] | None = None,
         include_readme: bool = True,
         model_payloads: dict[str, bytes] | None = None,
+        backslash_members: bool = False,
     ) -> None:
+        def member_name(name: str) -> str:
+            return name.replace("/", "\\") if backslash_members else name
+
         payloads = dict(MODEL_PAYLOADS if model_payloads is None else model_payloads)
         with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as handle:
-            handle.writestr(f"{RELEASE_ROOT}/KneeXrayMeasurement.exe", b"test executable")
             handle.writestr(
-                f"{RELEASE_ROOT}/_internal/knee_measurement_app.json",
+                member_name(f"{RELEASE_ROOT}/KneeXrayMeasurement.exe"),
+                b"test executable",
+            )
+            handle.writestr(
+                member_name(f"{RELEASE_ROOT}/_internal/knee_measurement_app.json"),
                 json.dumps(config or release_config(), ensure_ascii=False).encode("utf-8"),
             )
             for filename, payload in payloads.items():
-                handle.writestr(f"{RELEASE_ROOT}/_internal/models/{filename}", payload)
+                handle.writestr(
+                    member_name(f"{RELEASE_ROOT}/_internal/models/{filename}"),
+                    payload,
+                )
             if include_readme:
-                handle.writestr(f"{RELEASE_ROOT}/README_DOCTOR_EN.txt", self._doctor_readme())
+                handle.writestr(
+                    member_name(f"{RELEASE_ROOT}/README_DOCTOR_EN.txt"),
+                    self._doctor_readme(),
+                )
             for member, payload in (extra_members or {}).items():
-                handle.writestr(member, payload)
+                handle.writestr(member_name(member), payload)
 
     def _write_macos_archive(self, archive: Path) -> None:
         app_root = f"{MAC_RELEASE_ROOT}/KneeXrayMeasurement.app/Contents"
@@ -124,6 +137,14 @@ class MeasurementArchiveAuditTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             archive = Path(directory) / "release.zip"
             self._write_archive(archive)
+            result = self._audit(archive)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('"status": "ok"', result.stdout)
+
+    def test_clean_windows_backslash_member_names_pass(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / "release.zip"
+            self._write_archive(archive, backslash_members=True)
             result = self._audit(archive)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('"status": "ok"', result.stdout)
