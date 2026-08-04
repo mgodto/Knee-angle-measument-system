@@ -354,13 +354,6 @@ def _model_key_candidates(*sources: object) -> set[str]:
     return candidates
 
 
-def infer_model_key_from_sources(*sources: object) -> str | None:
-    """Infer an explicitly named implant cohort without inspecting image pixels."""
-
-    candidates = _model_key_candidates(*sources)
-    return next(iter(candidates)) if len(candidates) == 1 else None
-
-
 def resolve_model_selection(
     requested_mode: str,
     available_model_keys: Iterable[str],
@@ -951,17 +944,6 @@ def combine_warnings(*groups: tuple[str, ...] | list[str]) -> tuple[str, ...]:
             if warning not in combined:
                 combined.append(warning)
     return tuple(combined)
-
-
-def prediction_warnings(
-    prediction: LandmarkPrediction,
-    image_shape: tuple[int, ...],
-    low_peak_threshold: float,
-) -> tuple[str, ...]:
-    return combine_warnings(
-        coordinate_geometry_warnings(prediction.points, prediction.lines, image_shape),
-        model_quality_warnings(prediction, low_peak_threshold),
-    )
 
 
 def _normalize_crop_box(

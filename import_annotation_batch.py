@@ -208,13 +208,6 @@ def adapt_annotation_schema(annotation: object) -> tuple[dict, str] | None:
     return adapted, expected_raw_sha256
 
 
-def is_annotation(annotation: object) -> bool:
-    try:
-        return adapt_annotation_schema(annotation) is not None
-    except (TypeError, ValueError):
-        return False
-
-
 def explicit_json_for_side(study_dir: Path, side: str) -> bool:
     for path in study_dir.rglob("*.json"):
         parsed = parse_canonical(path.stem)
@@ -916,13 +909,6 @@ def existing_samples(dataset_root: Path) -> list[ExistingSample]:
             continue
         for row in load_manifest(manifest_path):
             result.append(ExistingSample(folder_name=folder_name, row=row))
-    return result
-
-
-def existing_rows_by_sample(dataset_root: Path) -> dict[str, list[dict[str, str]]]:
-    result: dict[str, list[dict[str, str]]] = defaultdict(list)
-    for sample in existing_samples(dataset_root):
-        result[sample.row["sample_id"]].append(sample.row)
     return result
 
 
