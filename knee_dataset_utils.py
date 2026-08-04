@@ -77,6 +77,10 @@ def normalized_path_parts(value: object) -> tuple[str, ...]:
     return tuple(part for part in text.split("/") if part)
 
 
+def reference_basename(value: object) -> str:
+    return str(value or "").replace("\\", "/").rsplit("/", 1)[-1]
+
+
 def common_suffix_len(left: tuple[str, ...], right: tuple[str, ...]) -> int:
     count = 0
     for left_part, right_part in zip(reversed(left), reversed(right)):
@@ -89,15 +93,15 @@ def common_suffix_len(left: tuple[str, ...], right: tuple[str, ...]) -> int:
 def raw_reference_score(candidate: RawCandidate, annotation: dict | None) -> int:
     if annotation is None:
         return 0
-    reference = annotation.get("raw_path") or annotation.get("source_raw_path")
-    if not reference:
-        return 0
-    reference_parts = normalized_path_parts(reference)
     candidate_parts = normalized_path_parts(candidate.path.as_posix())
-    suffix_len = common_suffix_len(reference_parts, candidate_parts)
-    if suffix_len == 0:
-        return 0
-    return -1000 * suffix_len
+    scores = [0]
+    for reference in (annotation.get("raw_path"), annotation.get("source_raw_path")):
+        if not reference:
+            continue
+        reference_parts = normalized_path_parts(reference)
+        suffix_len = common_suffix_len(reference_parts, candidate_parts)
+        scores.append(-1000 * suffix_len)
+    return min(scores)
 
 
 def raw_candidate_score(
@@ -128,24 +132,42 @@ def raw_candidate_score(
 
 
 def resolve_raw_candidate(annotation_path: Path, annotation: dict, index: dict[str, list[RawCandidate]]) -> tuple[RawCandidate, int]:
-    raw_filename = annotation.get("raw_filename") or Path(str(annotation.get("raw_path", ""))).name
     image_width = int(annotation["image_width"])
     image_height = int(annotation["image_height"])
     case_id = extract_case_id(annotation_sample_id(annotation_path))
 
-    candidates = [
-        candidate
-        for candidate in index.get(raw_filename, [])
-        if candidate.width == image_width and candidate.height == image_height
-    ]
+    raw_filenames = dict.fromkeys(
+        filename
+        for filename in (
+            reference_basename(annotation.get("source_raw_path")),
+            str(annotation.get("source_raw_filename") or ""),
+            str(annotation.get("raw_filename") or ""),
+            reference_basename(annotation.get("raw_path")),
+        )
+        if filename
+    )
+    candidates: list[RawCandidate] = []
+    for raw_filename in raw_filenames:
+        candidates = [
+            candidate
+            for candidate in index.get(raw_filename, [])
+            if candidate.width == image_width and candidate.height == image_height
+        ]
+        if candidates:
+            break
     if not candidates:
-        raise FileNotFoundError(f"No local raw image matched {raw_filename} at {image_width}x{image_height}")
+        tried = ", ".join(raw_filenames) or "<missing filename>"
+        raise FileNotFoundError(f"No local raw image matched [{tried}] at {image_width}x{image_height}")
 
     candidates.sort(key=lambda candidate: raw_candidate_score(candidate, case_id, annotation_path, annotation))
     return candidates[0], len(candidates)
 
 
-def annotation_keypoints(annotation: dict) -> dict[str, tuple[float, float]]:
+def annotation_keypoints(
+    annotation: dict,
+    *,
+    canonicalize_line_endpoints: bool = False,
+) -> dict[str, tuple[float, float]]:
     points = annotation.get("points", {})
     lines = annotation.get("lines", {})
     keypoints: dict[str, tuple[float, float]] = {}
@@ -154,8 +176,10 @@ def annotation_keypoints(annotation: dict) -> dict[str, tuple[float, float]]:
         keypoints[name] = (float(point["x"]), float(point["y"]))
     for line_name in ANNOTATION_LINE_NAMES:
         line = lines[line_name]
-        for endpoint in ("p1", "p2"):
-            point = line[endpoint]
+        endpoints = [line["p1"], line["p2"]]
+        if canonicalize_line_endpoints and float(endpoints[0]["x"]) > float(endpoints[1]["x"]):
+            endpoints.reverse()
+        for endpoint, point in zip(("p1", "p2"), endpoints):
             keypoints[f"{line_name}_{endpoint}"] = (float(point["x"]), float(point["y"]))
     return keypoints
 

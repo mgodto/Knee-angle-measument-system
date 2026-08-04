@@ -7,13 +7,17 @@ from unittest import mock
 
 import numpy as np
 
-from knee_measurement_app import KneeMeasurementApp
+from knee_measurement_app import (
+    INPUT_SCOPE_LABELS,
+    SCREEN_SIDE_LABELS,
+    SCREEN_SIDE_UNSELECTED,
+    KneeMeasurementApp,
+)
 from knee_model_runtime import (
     AnalysisResult,
     LandmarkPrediction,
     ModelInfo,
     SideRequiredError,
-    export_record,
     measurement_from_coordinates,
     measurement_out_of_range_angles,
 )
@@ -169,51 +173,27 @@ class P1GuiSafetyTests(unittest.TestCase):
         )
         app.notebook.tab.assert_called_once_with(app.quality_tab, text="確認事項（1）・AIモデル")
 
-    def test_failed_side_change_then_manual_repair_keeps_export_side_consistent(self) -> None:
+    def test_side_change_invalidates_old_result_and_reruns_inference(self) -> None:
         analysis = _analysis("L")
         app = KneeMeasurementApp.__new__(KneeMeasurementApp)
         app.analysis = analysis
         app.raw_path = analysis.raw_path
         app.raw_image = analysis.raw_image
-        app.points = {name: point.copy() for name, point in analysis.prediction.points.items()}
-        app.lines = {
-            name: {key: point.copy() for key, point in value.items()}
-            for name, value in analysis.prediction.lines.items()
-        }
-        valid_hip = app.points["hip"].copy()
-        app.points["hip"] = app.points["upper_center"].copy()
-        app.measurement = analysis.measurement
         app.side_var = _Variable("R")
         app.side_source_hint = "filename"
         app.busy = False
         app.service = object()
-        app.edited_keys = {"hip"}
-        app.result_state_var = _Variable()
-        app.status_var = _Variable()
-        app._clear_measurement_display = mock.Mock()
-        app._display_measurement = mock.Mock()
-        app._update_quality_display = mock.Mock()
+        app.task_id = 1
+        app._clear_analysis = mock.Mock()
+        app._model_selection_is_active = mock.Mock(return_value=True)
+        app._start_inference = mock.Mock()
 
         app._on_side_changed()
-        self.assertEqual(app.analysis.side, "L")
+
+        app._clear_analysis.assert_called_once_with(keep_raw=True)
+        app._start_inference.assert_called_once_with()
         self.assertEqual(app.side_source_hint, "manual_override")
-
-        app.points["hip"] = valid_hip
-        app._recalculate_after_edit()
-
-        self.assertEqual(app.analysis.side, "R")
-        self.assertEqual(app.analysis.side_source, "manual_override")
-        self.assertIs(app.analysis.measurement, app.measurement)
-        payload = export_record(
-            app.analysis,
-            app.points,
-            app.lines,
-            app.measurement,
-            app_version="test",
-            manually_modified=True,
-            edited_keys=app.edited_keys,
-        )
-        self.assertEqual(payload["analysis"]["side"], "R")
+        self.assertEqual(app.task_id, 2)
 
     def test_case_warning_selects_details_but_model_only_warning_does_not(self) -> None:
         app = KneeMeasurementApp.__new__(KneeMeasurementApp)
@@ -248,6 +228,13 @@ class P1GuiSafetyTests(unittest.TestCase):
         app._update_quality_display(select_details=True)
         app._show_quality_tab.assert_not_called()
 
+        app.points = {name: point.copy() for name, point in app.points.items()}
+        app.points["upper_center"][0] = 350.0
+        app._update_quality_display(select_details=True)
+        warning_lines = app._set_warning_text.call_args.args[0]
+        self.assertTrue(any("点3" in warning and "mLDFA" in warning for warning in warning_lines))
+        app._show_quality_tab.assert_called_once_with()
+
     def test_clear_analysis_resets_visible_warning_state(self) -> None:
         app = KneeMeasurementApp.__new__(KneeMeasurementApp)
         app.analysis = _analysis()
@@ -271,6 +258,15 @@ class P1GuiSafetyTests(unittest.TestCase):
         app.displayed_source_sha256 = app.analysis.source_sha256
         app.side_source_hint = "filename"
         app.side_var = _Variable("L")
+        app.input_scope_var = _Variable(INPUT_SCOPE_LABELS["bilateral"])
+        app.screen_side_var = _Variable(SCREEN_SIDE_LABELS["right"])
+        app.roi_split_var = _Variable("61")
+        app.roi_split_label_var = _Variable()
+        app.roi_confirmed = True
+        app.confirmed_crop_box = (100, 0, 400, 800)
+        app.roi_selection_method = "manual_screen_side_divider_overlap_confirmed"
+        app.roi_panel = mock.Mock()
+        app.bilateral_crop_button = mock.Mock()
         app.input_view = mock.Mock()
         app._refresh_action_states = mock.Mock()
 
@@ -278,6 +274,13 @@ class P1GuiSafetyTests(unittest.TestCase):
 
         self.assertEqual(app.warning_title_var.get(), "解析結果はありません")
         self.assertEqual(app.result_state_var.get(), "入力待ち")
+        self.assertEqual(app.input_scope_var.get(), INPUT_SCOPE_LABELS["single"])
+        self.assertEqual(app.screen_side_var.get(), SCREEN_SIDE_UNSELECTED)
+        self.assertEqual(app.roi_split_var.get(), 50.0)
+        self.assertFalse(app.roi_confirmed)
+        self.assertIsNone(app.confirmed_crop_box)
+        self.assertEqual(app.roi_selection_method, "")
+        app.roi_panel.pack_forget.assert_called_once_with()
         app._set_warning_banner.assert_called_once_with(
             "確認事項：解析後に表示します",
             "neutral",

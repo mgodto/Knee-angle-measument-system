@@ -10,10 +10,13 @@ import io
 import json
 import math
 import os
+import re
 import shutil
 import sys
 import time
+import unicodedata
 import uuid
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -38,6 +41,7 @@ CHECKPOINT_SCHEMA_VERSION = 1
 ARCHITECTURE_ID = "small_heatmap_v1"
 PREPROCESSING_ID = "grayscale_resize_percentile_1_99_v1"
 DEFAULT_CONFIG_FILENAME = "knee_measurement_app.json"
+BUILTIN_MODEL_KEYS = ("bone", "tka", "mixed")
 EXPECTED_KEYPOINT_NAMES = (
     *ANNOTATION_POINT_NAMES,
     "upper_line_p1",
@@ -52,14 +56,14 @@ LINE_ENDPOINT_NAMES = {
     "lower_line_p2": ("lower_line", "p2"),
 }
 COORDINATE_DISPLAY_NAMES = {
-    "hip": "股関節中心",
-    "upper_left": "大腿骨関節線・画像左点",
-    "upper_center": "大腿骨関節線・中央点",
-    "upper_right": "大腿骨関節線・画像右点",
-    "lower_left": "脛骨関節線・画像左点",
-    "lower_center": "脛骨関節線・中央点",
-    "lower_right": "脛骨関節線・画像右点",
-    "ankle": "足関節中心",
+    "hip": "点1・股関節中心",
+    "upper_left": "点2・大腿骨関節線点A",
+    "upper_center": "点3・大腿骨関節線中央点",
+    "upper_right": "点4・大腿骨関節線点B",
+    "lower_left": "点5・脛骨関節線点A",
+    "lower_center": "点6・脛骨関節線中央点",
+    "lower_right": "点7・脛骨関節線点B",
+    "ankle": "点8・足関節中心",
     "upper_line_p1": "大腿骨関節線端点1",
     "upper_line_p2": "大腿骨関節線端点2",
     "lower_line_p1": "脛骨関節線端点1",
@@ -103,6 +107,16 @@ class AppConfig:
     schema_version: int
     model: ModelSpec
     source_path: Path
+    models: dict[str, ModelSpec] = field(default_factory=dict)
+    default_model_key: str = "mixed"
+    auto_fallback_model_key: str = "mixed"
+
+
+@dataclass(frozen=True)
+class ModelSelection:
+    requested_mode: str
+    model_key: str
+    source: str
 
 
 @dataclass(frozen=True)
@@ -168,6 +182,11 @@ class AnalysisResult:
     source_sha256: str
     total_elapsed_ms: float
     side_source: str
+    model_selection: ModelSelection | None = None
+    input_scope: str = "single-leg raster X-ray"
+    inference_roi: tuple[int, int, int, int] | None = None
+    roi_selection_method: str | None = None
+    roi_confirmed: bool = False
 
 
 @runtime_checkable
@@ -203,6 +222,30 @@ def _resolve_config_resource(value: str | Path, config_dir: Path) -> Path:
     return (config_dir / path).resolve()
 
 
+def _parse_model_spec(model_payload: dict[str, Any], config_dir: Path) -> ModelSpec:
+    if not model_payload.get("adapter") or not model_payload.get("checkpoint"):
+        raise ModelLoadError("モデル設定には 'adapter' と 'checkpoint' の両方が必要です。")
+
+    options = dict(model_payload.get("options") or {})
+    try:
+        low_peak_threshold = float(options.get("low_peak_threshold", 0.35))
+    except (TypeError, ValueError) as exc:
+        raise ModelLoadError("low_peak_threshold は0～1の有限数で指定してください。") from exc
+    if not math.isfinite(low_peak_threshold) or not 0.0 <= low_peak_threshold <= 1.0:
+        raise ModelLoadError("low_peak_threshold は0～1の有限数で指定してください。")
+    options["low_peak_threshold"] = low_peak_threshold
+
+    return ModelSpec(
+        adapter=str(model_payload["adapter"]),
+        checkpoint=_resolve_config_resource(model_payload["checkpoint"], config_dir),
+        display_name=str(model_payload.get("display_name", "膝関節ランドマーク推定モデル")),
+        version=str(model_payload.get("version", "unversioned")),
+        cohort=str(model_payload.get("cohort", "片側下肢")),
+        device=str(model_payload.get("device", "cpu")),
+        options=options,
+    )
+
+
 def load_app_config(path: Path | None = None) -> AppConfig:
     config_path = Path(path or default_config_path()).expanduser().resolve()
     try:
@@ -221,28 +264,125 @@ def load_app_config(path: Path | None = None) -> AppConfig:
     model_payload = payload.get("model")
     if not isinstance(model_payload, dict):
         raise ModelLoadError("アプリ設定には 'model' オブジェクトが必要です。")
-    if not model_payload.get("adapter") or not model_payload.get("checkpoint"):
-        raise ModelLoadError("モデル設定には 'adapter' と 'checkpoint' の両方が必要です。")
+    legacy_model = _parse_model_spec(model_payload, config_path.parent)
+    models_payload = payload.get("models")
+    if models_payload is None:
+        models = {"mixed": legacy_model}
+    else:
+        if not isinstance(models_payload, dict) or not models_payload:
+            raise ModelLoadError("アプリ設定の 'models' には1件以上のモデル設定が必要です。")
+        models: dict[str, ModelSpec] = {}
+        for raw_key, raw_spec in models_payload.items():
+            key = str(raw_key).strip().lower()
+            if not key or not key.replace("_", "").isalnum():
+                raise ModelLoadError(f"モデルキーの形式が正しくありません：{raw_key}")
+            if key in models:
+                raise ModelLoadError(f"モデルキーが重複しています：{key}")
+            if not isinstance(raw_spec, dict):
+                raise ModelLoadError(f"モデル '{key}' の設定はオブジェクトで指定してください。")
+            models[key] = _parse_model_spec(raw_spec, config_path.parent)
 
-    options = dict(model_payload.get("options") or {})
-    try:
-        low_peak_threshold = float(options.get("low_peak_threshold", 0.35))
-    except (TypeError, ValueError) as exc:
-        raise ModelLoadError("low_peak_threshold は0～1の有限数で指定してください。") from exc
-    if not math.isfinite(low_peak_threshold) or not 0.0 <= low_peak_threshold <= 1.0:
-        raise ModelLoadError("low_peak_threshold は0～1の有限数で指定してください。")
-    options["low_peak_threshold"] = low_peak_threshold
-
-    model = ModelSpec(
-        adapter=str(model_payload["adapter"]),
-        checkpoint=_resolve_config_resource(model_payload["checkpoint"], config_path.parent),
-        display_name=str(model_payload.get("display_name", "膝関節ランドマーク推定モデル")),
-        version=str(model_payload.get("version", "unversioned")),
-        cohort=str(model_payload.get("cohort", "片側下肢")),
-        device=str(model_payload.get("device", "cpu")),
-        options=options,
+    default_model_key = str(payload.get("default_model_key", "mixed")).strip().lower()
+    auto_fallback_model_key = str(payload.get("auto_fallback_model_key", default_model_key)).strip().lower()
+    if models_payload is not None:
+        missing_builtin = sorted(set(BUILTIN_MODEL_KEYS).difference(models))
+        if missing_builtin:
+            raise ModelLoadError(f"内蔵モデル設定が不足しています：{', '.join(missing_builtin)}")
+        unexpected_models = sorted(set(models).difference(BUILTIN_MODEL_KEYS))
+        if unexpected_models:
+            raise ModelLoadError(f"未対応の内蔵モデル設定です：{', '.join(unexpected_models)}")
+    if default_model_key not in models:
+        raise ModelLoadError(f"既定モデル '{default_model_key}' が models にありません。")
+    if auto_fallback_model_key not in models:
+        raise ModelLoadError(f"自動判定のfallbackモデル '{auto_fallback_model_key}' が models にありません。")
+    if models_payload is not None and legacy_model != models[default_model_key]:
+        raise ModelLoadError("従来形式の model 設定は default_model_key の内蔵モデルと一致する必要があります。")
+    return AppConfig(
+        schema_version=schema_version,
+        model=models[default_model_key],
+        source_path=config_path,
+        models=models,
+        default_model_key=default_model_key,
+        auto_fallback_model_key=auto_fallback_model_key,
     )
-    return AppConfig(schema_version=schema_version, model=model, source_path=config_path)
+
+
+def _model_key_candidates(*sources: object) -> set[str]:
+    candidates: set[str] = set()
+    bone_phrases = (
+        "未加入人工關節",
+        "未加入人工関節",
+        "人工關節なし",
+        "人工関節なし",
+        "非人工關節",
+        "非人工関節",
+        "without implant",
+        "non-tka",
+        "non_tka",
+    )
+    tka_phrases = (
+        "加入人工關節",
+        "加入人工関節",
+        "人工關節あり",
+        "人工関節あり",
+        "人工膝關節",
+        "人工膝関節",
+        "膝關節置換",
+        "膝関節置換",
+        "total knee arthroplasty",
+    )
+    for source in sources:
+        if source is None:
+            continue
+        text = unicodedata.normalize("NFKC", str(source)).casefold()
+        bone_match = any(phrase in text for phrase in bone_phrases)
+        for phrase in bone_phrases:
+            text = text.replace(phrase, " ")
+        tka_match = any(phrase in text for phrase in tka_phrases)
+        for phrase in tka_phrases:
+            text = text.replace(phrase, " ")
+        tokens = set(filter(None, re.split(r"[^a-z0-9]+", text)))
+        bone_match = bone_match or "bone" in tokens
+        tka_match = tka_match or "tka" in tokens
+        mixed_match = "mixed" in tokens
+        if bone_match:
+            candidates.add("bone")
+        if tka_match:
+            candidates.add("tka")
+        if mixed_match:
+            candidates.add("mixed")
+    return candidates
+
+
+def infer_model_key_from_sources(*sources: object) -> str | None:
+    """Infer an explicitly named implant cohort without inspecting image pixels."""
+
+    candidates = _model_key_candidates(*sources)
+    return next(iter(candidates)) if len(candidates) == 1 else None
+
+
+def resolve_model_selection(
+    requested_mode: str,
+    available_model_keys: Iterable[str],
+    *sources: object,
+    fallback_model_key: str = "mixed",
+) -> ModelSelection:
+    available = {str(key).strip().lower() for key in available_model_keys}
+    mode = str(requested_mode).strip().lower()
+    if mode != "auto":
+        if mode not in available:
+            raise ModelLoadError(f"選択したモデル '{mode}' は利用できません。")
+        return ModelSelection(requested_mode=mode, model_key=mode, source="manual_override")
+
+    candidates = _model_key_candidates(*sources)
+    inferred = next(iter(candidates)) if len(candidates) == 1 else None
+    if inferred in available:
+        return ModelSelection(requested_mode="auto", model_key=inferred, source="filename")
+    fallback = str(fallback_model_key).strip().lower()
+    if fallback not in available:
+        raise ModelLoadError(f"自動判定のfallbackモデル '{fallback}' は利用できません。")
+    source = "auto_fallback_conflict" if len(candidates) > 1 else "auto_fallback_unknown"
+    return ModelSelection(requested_mode="auto", model_key=fallback, source=source)
 
 
 def model_spec_with_checkpoint(spec: ModelSpec, checkpoint: Path) -> ModelSpec:
@@ -667,12 +807,33 @@ def coordinate_geometry_warnings(
         labels = ", ".join(coordinate_display_name(name) for name in out_of_bounds)
         warnings.append(f"画像範囲外のランドマークがあります：{labels}")
 
+    center_checks = (
+        (
+            "upper_center",
+            "upper_left",
+            "upper_right",
+            "点3（大腿骨側中央点）が点2と点4の水平方向の間にありません。mLDFAとHKAを計算する前に位置を確認してください。",
+        ),
+        (
+            "lower_center",
+            "lower_left",
+            "lower_right",
+            "点6（脛骨側中央点）が点5と点7の水平方向の間にありません。MPTAとHKAを計算する前に位置を確認してください。",
+        ),
+    )
+    for center_name, outer_a_name, outer_b_name, message in center_checks:
+        center_x = float(points[center_name][0])
+        outer_a_x = float(points[outer_a_name][0])
+        outer_b_x = float(points[outer_b_name][0])
+        if not min(outer_a_x, outer_b_x) < center_x < max(outer_a_x, outer_b_x):
+            warnings.append(message)
+
     hip_y = float(points["hip"][1])
     upper_y = float(points["upper_center"][1])
     lower_y = float(points["lower_center"][1])
     ankle_y = float(points["ankle"][1])
-    if not (hip_y < upper_y <= lower_y < ankle_y):
-        warnings.append("ランドマークの上下方向の解剖学的順序が不自然です。位置を確認・修正してください。")
+    if not (hip_y < upper_y < lower_y < ankle_y):
+        warnings.append("点1・点3・点6・点8の上下方向の解剖学的順序が不自然です。位置を確認・修正してください。")
 
     if float(np.linalg.norm(points["hip"] - points["upper_center"])) < 8.0:
         warnings.append("大腿骨の機械軸を定義する2点が近すぎるため、角度を正しく計算できません。")
@@ -803,6 +964,47 @@ def prediction_warnings(
     )
 
 
+def _normalize_crop_box(
+    crop_box: tuple[int, int, int, int] | None,
+    image_shape: tuple[int, ...],
+) -> tuple[int, int, int, int] | None:
+    if crop_box is None:
+        return None
+    if len(crop_box) != 4:
+        raise ValueError("ROIは (x0, y0, x1, y1) の4つの座標で指定してください。")
+    if any(isinstance(value, bool) or not isinstance(value, (int, np.integer)) for value in crop_box):
+        raise ValueError("ROIの座標は整数で指定してください。")
+
+    x0, y0, x1, y1 = (int(value) for value in crop_box)
+    image_height, image_width = image_shape[:2]
+    if not (0 <= x0 < x1 <= image_width and 0 <= y0 < y1 <= image_height):
+        raise ValueError(
+            f"ROI ({x0}, {y0}, {x1}, {y1}) が元画像の範囲 "
+            f"(0, 0, {image_width}, {image_height}) に収まっていません。"
+        )
+    return x0, y0, x1, y1
+
+
+def _offset_prediction(
+    prediction: LandmarkPrediction,
+    offset_x: int,
+    offset_y: int,
+) -> LandmarkPrediction:
+    offset = np.asarray([offset_x, offset_y], dtype=np.float32)
+    points = {
+        name: np.asarray(point, dtype=np.float32) + offset
+        for name, point in prediction.points.items()
+    }
+    lines = {
+        line_name: {
+            endpoint: np.asarray(point, dtype=np.float32) + offset
+            for endpoint, point in endpoints.items()
+        }
+        for line_name, endpoints in prediction.lines.items()
+    }
+    return replace(prediction, points=points, lines=lines)
+
+
 class KneeAnalysisService:
     def __init__(
         self,
@@ -816,7 +1018,14 @@ class KneeAnalysisService:
         if not math.isfinite(self.low_peak_threshold) or not 0.0 <= self.low_peak_threshold <= 1.0:
             raise ModelLoadError("low_peak_threshold は0～1の有限数で指定してください。")
 
-    def analyze_path(self, raw_path: Path, requested_side: str | None = None) -> AnalysisResult:
+    def analyze_path(
+        self,
+        raw_path: Path,
+        requested_side: str | None = None,
+        crop_box: tuple[int, int, int, int] | None = None,
+        roi_selection_method: str = "explicit",
+        roi_confirmed: bool = True,
+    ) -> AnalysisResult:
         started = time.perf_counter()
         raw_path = Path(raw_path).expanduser().resolve()
         explicit_side = normalize_measurement_side(requested_side)
@@ -826,7 +1035,19 @@ class KneeAnalysisService:
         raw_image = read_color(raw_path)
         if sha256_file(raw_path) != source_sha256:
             raise InferenceError("解析中に元画像が変更されました。画像を開き直してください。")
-        prediction = self.adapter.predict(raw_image)
+        inference_roi = _normalize_crop_box(crop_box, raw_image.shape)
+        inference_image = raw_image
+        selection_method: str | None = None
+        if inference_roi is not None:
+            selection_method = str(roi_selection_method).strip()
+            if not selection_method:
+                raise ValueError("ROIの選択方法は空文字にできません。")
+            x0, y0, x1, y1 = inference_roi
+            inference_image = np.ascontiguousarray(raw_image[y0:y1, x0:x1])
+
+        prediction = self.adapter.predict(inference_image)
+        if inference_roi is not None:
+            prediction = _offset_prediction(prediction, inference_roi[0], inference_roi[1])
         ensure_valid_coordinate_geometry(prediction.points, prediction.lines)
         measurement, _debug = measure_from_named_points(
             raw_image,
@@ -855,6 +1076,14 @@ class KneeAnalysisService:
             source_sha256=source_sha256,
             total_elapsed_ms=(time.perf_counter() - started) * 1000.0,
             side_source=side_source,
+            input_scope=(
+                "bilateral raster X-ray"
+                if inference_roi is not None
+                else "single-leg raster X-ray"
+            ),
+            inference_roi=inference_roi,
+            roi_selection_method=selection_method,
+            roi_confirmed=bool(roi_confirmed) if inference_roi is not None else False,
         )
 
 
@@ -928,6 +1157,38 @@ def export_record(
             "model_peak_score": analysis.prediction.peak_scores.get(name),
         }
 
+    analysis_payload: dict[str, Any] = {
+        "side": analysis.side,
+        "side_source": analysis.side_source,
+        "manually_modified": bool(manually_modified),
+        "edited_keys": sorted(edited),
+        "prediction_schema_version": analysis.prediction.schema_version,
+        "coordinate_space": {
+            "unit": "pixel",
+            "origin": "top-left",
+            "x_direction": "right",
+            "y_direction": "down",
+        },
+        "inference_elapsed_ms": round(analysis.prediction.elapsed_ms, 3),
+        "total_elapsed_ms": round(analysis.total_elapsed_ms, 3),
+        "warnings": list(current_warnings),
+    }
+    if analysis.model_selection is not None:
+        analysis_payload["model_selection"] = asdict(analysis.model_selection)
+    if analysis.inference_roi is not None:
+        x0, y0, x1, y1 = analysis.inference_roi
+        analysis_payload["inference_roi"] = {
+            "x0": x0,
+            "y0": y0,
+            "x1": x1,
+            "y1": y1,
+            "width": x1 - x0,
+            "height": y1 - y0,
+            "coordinate_space": "source_image_pixels",
+            "selection_method": analysis.roi_selection_method,
+            "confirmed": analysis.roi_confirmed,
+        }
+
     return {
         "schema_version": 1,
         "app": {"name": "Knee X-ray Auto Measurement", "version": app_version},
@@ -936,25 +1197,10 @@ def export_record(
             "sha256": analysis.source_sha256,
             "image_width": int(analysis.raw_image.shape[1]),
             "image_height": int(analysis.raw_image.shape[0]),
-            "input_scope": "single-leg raster X-ray",
+            "input_scope": analysis.input_scope,
         },
         "model": asdict(analysis.prediction.model_info),
-        "analysis": {
-            "side": analysis.side,
-            "side_source": analysis.side_source,
-            "manually_modified": bool(manually_modified),
-            "edited_keys": sorted(edited),
-            "prediction_schema_version": analysis.prediction.schema_version,
-            "coordinate_space": {
-                "unit": "pixel",
-                "origin": "top-left",
-                "x_direction": "right",
-                "y_direction": "down",
-            },
-            "inference_elapsed_ms": round(analysis.prediction.elapsed_ms, 3),
-            "total_elapsed_ms": round(analysis.total_elapsed_ms, 3),
-            "warnings": list(current_warnings),
-        },
+        "analysis": analysis_payload,
         "points": {
             name: point_record(name, points[name], analysis.prediction.points[name])
             for name in ANNOTATION_POINT_NAMES

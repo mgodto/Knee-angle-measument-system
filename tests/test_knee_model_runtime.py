@@ -27,6 +27,8 @@ from knee_model_runtime import (
     SmallHeatmapV1Adapter,
     export_record,
     clear_model_preference,
+    coordinate_display_name,
+    coordinate_geometry_warnings,
     load_app_config,
     load_model_preference,
     measurement_from_coordinates,
@@ -302,6 +304,69 @@ class GuiModelSwitchTests(unittest.TestCase):
 
 
 class AnalysisServiceTests(unittest.TestCase):
+    def test_point_display_names_use_ids_without_screen_left_right_claims(self) -> None:
+        for point_id, name in enumerate(EXPECTED_KEYPOINT_NAMES[:8], start=1):
+            label = coordinate_display_name(name)
+            self.assertTrue(label.startswith(f"点{point_id}・"))
+            self.assertNotIn("画像左", label)
+            self.assertNotIn("画像右", label)
+
+    def test_center_landmarks_outside_outer_points_warn_for_affected_angles(self) -> None:
+        prediction = FakeAdapter().predict(np.zeros((800, 400, 3), dtype=np.uint8))
+        points = {name: point.copy() for name, point in prediction.points.items()}
+        points["upper_center"][0] = 350.0
+        before = {name: point.copy() for name, point in points.items()}
+
+        warnings = coordinate_geometry_warnings(points, prediction.lines, (800, 400, 3))
+
+        self.assertTrue(any("点3" in warning and "mLDFA" in warning and "HKA" in warning for warning in warnings))
+        self.assertFalse(any("点6" in warning and "MPTA" in warning for warning in warnings))
+        for name in points:
+            np.testing.assert_array_equal(points[name], before[name])
+
+        points = {name: point.copy() for name, point in prediction.points.items()}
+        points["lower_center"][0] = 350.0
+        warnings = coordinate_geometry_warnings(points, prediction.lines, (800, 400, 3))
+        self.assertTrue(any("点6" in warning and "MPTA" in warning and "HKA" in warning for warning in warnings))
+
+    def test_valid_center_geometry_has_no_center_position_warning(self) -> None:
+        prediction = FakeAdapter().predict(np.zeros((800, 400, 3), dtype=np.uint8))
+
+        warnings = coordinate_geometry_warnings(
+            prediction.points,
+            prediction.lines,
+            (800, 400, 3),
+        )
+
+        self.assertFalse(any("水平方向の間にありません" in warning for warning in warnings))
+
+    def test_real_right_to_left_outer_point_orientation_has_no_center_warning(self) -> None:
+        prediction = FakeAdapter().predict(np.zeros((800, 400, 3), dtype=np.uint8))
+        points = {name: point.copy() for name, point in prediction.points.items()}
+        points["upper_left"][0], points["upper_right"][0] = (
+            points["upper_right"][0],
+            points["upper_left"][0],
+        )
+        points["lower_left"][0], points["lower_right"][0] = (
+            points["lower_right"][0],
+            points["lower_left"][0],
+        )
+
+        warnings = coordinate_geometry_warnings(points, prediction.lines, (800, 400, 3))
+
+        self.assertFalse(any("水平方向の間にありません" in warning for warning in warnings))
+
+    def test_reversed_center_vertical_order_names_points_three_and_six(self) -> None:
+        prediction = FakeAdapter().predict(np.zeros((800, 400, 3), dtype=np.uint8))
+        for upper_y in (420.0, 430.0):
+            with self.subTest(upper_y=upper_y):
+                points = {name: point.copy() for name, point in prediction.points.items()}
+                points["upper_center"][1] = upper_y
+
+                warnings = coordinate_geometry_warnings(points, prediction.lines, (800, 400, 3))
+
+                self.assertTrue(any("点3" in warning and "点6" in warning and "上下方向" in warning for warning in warnings))
+
     def test_side_is_required_when_filename_has_no_laterality(self) -> None:
         with self.assertRaises(SideRequiredError):
             resolve_side(Path("patient.png"), None)
@@ -371,6 +436,8 @@ class AnalysisServiceTests(unittest.TestCase):
             self.assertFalse(record["analysis"]["manually_modified"])
             self.assertEqual(set(record["angles_deg"]), {"mLDFA", "MPTA", "JLCA", "HKA"})
             self.assertNotIn("path", record["source"])
+            self.assertEqual(record["source"]["input_scope"], "single-leg raster X-ray")
+            self.assertNotIn("inference_roi", record["analysis"])
 
             json_path = root / "result.json"
             overlay_path = root / "result.png"
@@ -406,6 +473,95 @@ class AnalysisServiceTests(unittest.TestCase):
             self.assertEqual(edited["points"]["hip"]["source"], "manual")
             self.assertEqual(edited["analysis"]["edited_keys"], ["hip"])
             self.assertNotEqual(edited["points"]["hip"]["x"], edited["points"]["hip"]["model_prediction"]["x"])
+
+    def test_crop_is_used_for_inference_and_predictions_map_back_to_source(self) -> None:
+        class RecordingAdapter(FakeAdapter):
+            def __init__(self) -> None:
+                super().__init__()
+                self.input_shape: tuple[int, ...] | None = None
+
+            def predict(self, image_bgr: np.ndarray) -> LandmarkPrediction:
+                self.input_shape = image_bgr.shape
+                return super().predict(image_bgr)
+
+        with tempfile.TemporaryDirectory() as directory:
+            image_path = Path(directory) / "001L.png"
+            write_test_image(image_path)
+            adapter = RecordingAdapter()
+            result = KneeAnalysisService(
+                adapter,
+                render_component_images=False,
+            ).analyze_path(
+                image_path,
+                crop_box=(50, 20, 350, 780),
+                roi_selection_method="manual_roi",
+                roi_confirmed=True,
+            )
+
+            self.assertEqual(adapter.input_shape, (760, 300, 3))
+            local_prediction = FakeAdapter().predict(np.zeros((760, 300, 3), dtype=np.uint8))
+            offset = np.array([50.0, 20.0], dtype=np.float32)
+            for name, local_point in local_prediction.points.items():
+                np.testing.assert_array_equal(result.prediction.points[name] - offset, local_point)
+            for line_name, endpoints in local_prediction.lines.items():
+                for endpoint, local_point in endpoints.items():
+                    np.testing.assert_array_equal(
+                        result.prediction.lines[line_name][endpoint] - offset,
+                        local_point,
+                    )
+            np.testing.assert_array_equal(
+                result.prediction.points["hip"],
+                np.array([230.0, 90.0], dtype=np.float32),
+            )
+            np.testing.assert_array_equal(
+                result.prediction.lines["lower_line"]["p2"],
+                np.array([335.0, 450.0], dtype=np.float32),
+            )
+            self.assertEqual(result.raw_image.shape, (800, 400, 3))
+            self.assertEqual(result.inference_roi, (50, 20, 350, 780))
+            self.assertEqual(result.input_scope, "bilateral raster X-ray")
+
+            record = export_record(
+                result,
+                result.prediction.points,
+                result.prediction.lines,
+                result.measurement,
+                app_version="test",
+                manually_modified=False,
+            )
+            self.assertEqual(record["source"]["input_scope"], "bilateral raster X-ray")
+            self.assertEqual(
+                record["analysis"]["inference_roi"],
+                {
+                    "x0": 50,
+                    "y0": 20,
+                    "x1": 350,
+                    "y1": 780,
+                    "width": 300,
+                    "height": 760,
+                    "coordinate_space": "source_image_pixels",
+                    "selection_method": "manual_roi",
+                    "confirmed": True,
+                },
+            )
+
+    def test_crop_box_must_be_integer_nonempty_and_inside_source_image(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            image_path = Path(directory) / "001L.png"
+            write_test_image(image_path)
+            service = KneeAnalysisService(FakeAdapter(), render_component_images=False)
+            invalid_boxes = (
+                (-1, 0, 300, 800),
+                (0, 0, 401, 800),
+                (0, 0, 300, 801),
+                (100, 0, 100, 800),
+                (0, 400, 300, 400),
+                (0.0, 0, 300, 800),
+                (0, 0, 300),
+            )
+            for crop_box in invalid_boxes:
+                with self.subTest(crop_box=crop_box), self.assertRaises(ValueError):
+                    service.analyze_path(image_path, crop_box=crop_box)  # type: ignore[arg-type]
 
     def test_manual_degenerate_axis_is_rejected(self) -> None:
         adapter = FakeAdapter()

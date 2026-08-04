@@ -6,6 +6,7 @@ Thumbs.db
 __pycache__/
 *.py[cod]
 *$py.class
+knee_measurement_app_windows.py
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -29,7 +30,9 @@ dist/
 *.msi
 *.zip
 *.pt
-!models/current.pt
+!models/bone.pt
+!models/tka.pt
+!models/mixed.pt
 *.pth
 runs/
 checkpoints/
@@ -43,6 +46,14 @@ images/
 outputs/
 annotations/
 annotations_test/
+
+# Private/local reconciliation metadata and generated release staging
+annotation_import_overrides_*.json
+automation_monthly_reports/
+releases/
+private/
+RETRAINING_REPORT*.md
+models/candidates/
 
 # Papers / reference PDFs
 knee_alignment_paper/

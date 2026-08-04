@@ -15,6 +15,7 @@ import torch
 from knee_dataset_utils import annotation_keypoints, dataset_manifest_path, load_manifest, read_json
 from measure_angles import measure_from_named_points
 from knee_keypoint_model import (
+    HARD_ARGMAX_DECODER_ID,
     KEYPOINT_NAMES,
     SmallHeatmapNet,
     coords_to_measurement_payload,
@@ -55,12 +56,13 @@ def predict_keypoints(
     image_width: int,
     image_height: int,
     stride: int,
+    decoder_id: str,
 ) -> np.ndarray:
     image = preprocess_xray(Path(row["raw_path"]), image_width, image_height)
     tensor = torch.from_numpy(image[None, None, ...]).to(device)
     with torch.no_grad():
         logits = model(tensor)[0]
-    return decode_heatmaps(logits, row, image_width, image_height, stride)
+    return decode_heatmaps(logits, row, image_width, image_height, stride, decoder_id)
 
 
 def line_pairs(coords: np.ndarray) -> list[tuple[int, int]]:
@@ -191,6 +193,7 @@ def main() -> None:
     image_width = int(checkpoint["image_width"])
     image_height = int(checkpoint["image_height"])
     stride = int(checkpoint["stride"])
+    decoder_id = str(checkpoint.get("decoder_id", HARD_ARGMAX_DECODER_ID))
 
     manifest_path = dataset_manifest_path(args.dataset_dir, args.manifest, Path("outputs/knee_dataset_manifest.csv"))
     rows = load_manifest(manifest_path)
@@ -204,9 +207,9 @@ def main() -> None:
         if raw_image is None:
             raise ValueError(f"Cannot read raw image: {row['raw_path']}")
         annotation = read_json(Path(row["annotation_path"]))
-        gt_map = annotation_keypoints(annotation)
+        gt_map = annotation_keypoints(annotation, canonicalize_line_endpoints=True)
         gt_coords = np.array([gt_map[name] for name in KEYPOINT_NAMES], dtype=np.float32)
-        pred_coords = predict_keypoints(model, row, device, image_width, image_height, stride)
+        pred_coords = predict_keypoints(model, row, device, image_width, image_height, stride, decoder_id)
         point_errors = np.linalg.norm(pred_coords - gt_coords, axis=1)
 
         gt_mldfa = float(row["mldfa"])

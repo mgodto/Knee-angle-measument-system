@@ -9,6 +9,7 @@ import json
 import math
 import random
 import warnings
+from collections.abc import Iterable
 from pathlib import Path
 
 import numpy as np
@@ -23,7 +24,9 @@ from knee_keypoint_model import (
     ADAPTER_ID,
     ARCHITECTURE_ID,
     CHECKPOINT_SCHEMA_VERSION,
+    HARD_ARGMAX_DECODER_ID,
     KEYPOINT_NAMES,
+    SUPPORTED_DECODER_IDS,
     PREPROCESSING_ID,
     SmallHeatmapNet,
     coords_to_measurement_payload,
@@ -31,6 +34,9 @@ from knee_keypoint_model import (
     preprocess_xray,
     select_device,
 )
+
+
+CASE_ID_HASH_ALGORITHM = "sha256_json_sorted_unique_utf8_v1"
 
 
 def set_seed(seed: int) -> None:
@@ -45,6 +51,61 @@ def sha256_path(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def case_ids_sha256(case_ids: Iterable[str]) -> str:
+    normalized = sorted({str(case_id) for case_id in case_ids})
+    payload = json.dumps(
+        normalized,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def case_split_provenance(
+    rows: list[dict[str, str]],
+    train_indices: list[int],
+    val_indices: list[int],
+    num_folds: int,
+    fold: int,
+    seed: int,
+) -> dict[str, int | str]:
+    train_case_ids = {rows[index]["case_id"] for index in train_indices}
+    val_case_ids = {rows[index]["case_id"] for index in val_indices}
+    return {
+        "num_folds": int(num_folds),
+        "fold": int(fold),
+        "seed": int(seed),
+        "case_id_hash_algorithm": CASE_ID_HASH_ALGORITHM,
+        "train_case_count": len(train_case_ids),
+        "val_case_count": len(val_case_ids),
+        "train_case_ids_sha256": case_ids_sha256(train_case_ids),
+        "val_case_ids_sha256": case_ids_sha256(val_case_ids),
+    }
+
+
+def load_cross_validation_metrics(path: Path | None, manifest_sha256: str) -> tuple[dict[str, float], str | None]:
+    if path is None:
+        return {}, None
+    with path.open("r", encoding="utf-8") as handle:
+        summary = json.load(handle)
+    summary_manifest_sha = str(summary.get("manifest", {}).get("sha256", ""))
+    if summary_manifest_sha != manifest_sha256:
+        raise ValueError("--cv-summary was generated from a different training manifest")
+    if not bool(summary.get("cross_validation", {}).get("complete_5_fold")):
+        raise ValueError("--cv-summary must contain a complete 5-fold evaluation")
+    provenance = summary.get("provenance")
+    if not isinstance(provenance, dict) or provenance.get("verified") is not True:
+        raise ValueError("--cv-summary must contain verified fold provenance")
+    if provenance.get("complete_partition_verified") is not True:
+        raise ValueError("--cv-summary must contain a verified complete case partition")
+    metrics: dict[str, float] = {}
+    for name, values in dict(summary.get("metrics") or {}).items():
+        value = values.get("sample_weighted_mean") if isinstance(values, dict) else None
+        if isinstance(value, (int, float)) and math.isfinite(float(value)):
+            metrics[str(name)] = float(value)
+    return metrics, sha256_path(path)
 
 
 def split_by_case(rows: list[dict[str, str]], num_folds: int, fold: int, seed: int) -> tuple[list[int], list[int]]:
@@ -89,6 +150,26 @@ def heatmap_mse_loss(logits: torch.Tensor, targets: torch.Tensor, peak_weight: f
     return per_heatmap.mean()
 
 
+def complete_angle_checkpoint_score(
+    metrics: dict[str, float | int],
+    total_samples: int,
+) -> float | None:
+    """Return the mean angle MAE only when every validation sample is valid."""
+
+    if total_samples < 1:
+        return None
+    values: list[float] = []
+    for name in ("mldfa", "mpta"):
+        value = metrics.get(f"{name}_mae_deg")
+        valid_n = metrics.get(f"{name}_valid_n")
+        if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
+            return None
+        if not isinstance(valid_n, (int, float)) or int(valid_n) != total_samples:
+            return None
+        values.append(float(value))
+    return float(np.mean(values))
+
+
 class KneeKeypointDataset(Dataset):
     def __init__(
         self,
@@ -119,7 +200,7 @@ class KneeKeypointDataset(Dataset):
         row_index = self.indices[dataset_index]
         row = self.rows[row_index]
         annotation = read_json(Path(row["annotation_path"]))
-        keypoint_map = annotation_keypoints(annotation)
+        keypoint_map = annotation_keypoints(annotation, canonicalize_line_endpoints=True)
         keypoints = np.array([keypoint_map[name] for name in KEYPOINT_NAMES], dtype=np.float32)
         image = preprocess_xray(Path(row["raw_path"]), self.image_width, self.image_height)
         heatmaps = make_heatmaps(
@@ -150,7 +231,8 @@ def evaluate(
     image_height: int,
     stride: int,
     heatmap_peak_weight: float = 1.0,
-) -> dict[str, float]:
+    decoder_id: str = HARD_ARGMAX_DECODER_ID,
+) -> dict[str, float | int]:
     model.eval()
     losses: list[float] = []
     point_errors: list[float] = []
@@ -167,9 +249,16 @@ def evaluate(
                 row_index = int(row_index_tensor)
                 row = rows[row_index]
                 annotation = read_json(Path(row["annotation_path"]))
-                target_keypoints = annotation_keypoints(annotation)
+                target_keypoints = annotation_keypoints(annotation, canonicalize_line_endpoints=True)
                 target_coords = np.array([target_keypoints[name] for name in KEYPOINT_NAMES], dtype=np.float32)
-                pred_coords = decode_heatmaps(logits[batch_idx], row, image_width, image_height, stride)
+                pred_coords = decode_heatmaps(
+                    logits[batch_idx],
+                    row,
+                    image_width,
+                    image_height,
+                    stride,
+                    decoder_id,
+                )
                 point_errors.extend(np.linalg.norm(pred_coords - target_coords, axis=1).tolist())
 
                 try:
@@ -197,11 +286,16 @@ def evaluate(
                 except Exception:
                     continue
 
+    total_samples = len(loader.dataset)
     return {
         "loss": float(np.mean(losses)) if losses else float("nan"),
         "point_mae_px": float(np.mean(point_errors)) if point_errors else float("nan"),
         "mldfa_mae_deg": float(np.mean(mldfa_errors)) if mldfa_errors else float("nan"),
+        "mldfa_valid_n": len(mldfa_errors),
+        "mldfa_failure_count": total_samples - len(mldfa_errors),
         "mpta_mae_deg": float(np.mean(mpta_errors)) if mpta_errors else float("nan"),
+        "mpta_valid_n": len(mpta_errors),
+        "mpta_failure_count": total_samples - len(mpta_errors),
     }
 
 
@@ -230,6 +324,12 @@ def main() -> None:
         default=1.0,
         help="Relative MSE weight at the center of each target heatmap (1 disables weighting).",
     )
+    parser.add_argument(
+        "--decoder-id",
+        choices=SUPPORTED_DECODER_IDS,
+        default=HARD_ARGMAX_DECODER_ID,
+        help="Versioned heatmap-to-coordinate decoder stored in the checkpoint.",
+    )
     parser.add_argument("--num-folds", type=int, default=5)
     parser.add_argument("--fold", type=int, default=0)
     parser.add_argument("--seed", type=int, default=42)
@@ -238,6 +338,8 @@ def main() -> None:
     parser.add_argument("--model-scope", default="unspecified", help="Deployment cohort/scope stored in checkpoints.")
     parser.add_argument("--cache-dataset", action="store_true", help="Cache resized images and heatmaps in memory.")
     parser.add_argument("--eval-every", type=int, default=1, help="Run full validation every N epochs.")
+    parser.add_argument("--train-all", action="store_true", help="Train on every manifest row and save final.pt.")
+    parser.add_argument("--cv-summary", type=Path, default=None, help="Complete CV summary stored with --train-all.")
     parser.add_argument("--max-samples", type=int, default=0, help="Optional smoke-test limit.")
     args = parser.parse_args()
 
@@ -251,12 +353,28 @@ def main() -> None:
     device = select_device(args.device)
     args.manifest = dataset_manifest_path(args.dataset_dir, args.manifest, Path("outputs/knee_dataset_manifest.csv"))
     manifest_sha256 = sha256_path(args.manifest)
+    if args.cv_summary is not None and not args.train_all:
+        raise ValueError("--cv-summary requires --train-all")
+    cv_metrics, cv_summary_sha256 = load_cross_validation_metrics(args.cv_summary, manifest_sha256)
     rows = load_manifest(args.manifest)
     if args.max_samples:
         rows = rows[: args.max_samples]
-    train_indices, val_indices = split_by_case(rows, args.num_folds, args.fold, args.seed)
-    if not train_indices or not val_indices:
+    if args.train_all:
+        train_indices, val_indices = list(range(len(rows))), []
+    else:
+        train_indices, val_indices = split_by_case(rows, args.num_folds, args.fold, args.seed)
+    if not train_indices or (not args.train_all and not val_indices):
         raise ValueError("Train/validation split is empty. Reduce --num-folds or remove --max-samples.")
+    split_provenance = None
+    if not args.train_all:
+        split_provenance = case_split_provenance(
+            rows,
+            train_indices,
+            val_indices,
+            args.num_folds,
+            args.fold,
+            args.seed,
+        )
 
     train_dataset = KneeKeypointDataset(
         rows,
@@ -267,17 +385,20 @@ def main() -> None:
         args.sigma,
         cache=args.cache_dataset,
     )
-    val_dataset = KneeKeypointDataset(
-        rows,
-        val_indices,
-        args.image_width,
-        args.image_height,
-        args.stride,
-        args.sigma,
-        cache=args.cache_dataset,
-    )
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
-    val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=0)
+    if args.train_all:
+        val_loader = None
+    else:
+        val_dataset = KneeKeypointDataset(
+            rows,
+            val_indices,
+            args.image_width,
+            args.image_height,
+            args.stride,
+            args.sigma,
+            cache=args.cache_dataset,
+        )
+        val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=0)
 
     model = SmallHeatmapNet(out_channels=len(KEYPOINT_NAMES)).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
@@ -287,6 +408,7 @@ def main() -> None:
 
     log_path = args.output_dir / "train_log.csv"
     best_val = float("inf")
+    best_angle_val = float("inf")
     with log_path.open("w", encoding="utf-8", newline="") as log_file:
         log_writer = csv.DictWriter(
             log_file,
@@ -309,7 +431,7 @@ def main() -> None:
                 train_losses.append(float(loss.detach().cpu()))
 
             train_loss = float(np.mean(train_losses)) if train_losses else float("nan")
-            should_evaluate = epoch == 1 or epoch % args.eval_every == 0 or epoch == args.epochs
+            should_evaluate = not args.train_all and (epoch == 1 or epoch % args.eval_every == 0 or epoch == args.epochs)
             if not should_evaluate:
                 log_writer.writerow(
                     {
@@ -325,6 +447,7 @@ def main() -> None:
                 print(f"epoch {epoch:03d} train={train_loss:.6f}")
                 continue
 
+            assert val_loader is not None
             val_metrics = evaluate(
                 model,
                 val_loader,
@@ -334,6 +457,7 @@ def main() -> None:
                 args.image_height,
                 args.stride,
                 args.heatmap_peak_weight,
+                args.decoder_id,
             )
             log_writer.writerow(
                 {
@@ -352,31 +476,69 @@ def main() -> None:
                 f"mLDFA={format_metric(val_metrics['mldfa_mae_deg'], 2, 'deg')} "
                 f"MPTA={format_metric(val_metrics['mpta_mae_deg'], 2, 'deg')}"
             )
-            if val_metrics["point_mae_px"] < best_val:
-                best_val = val_metrics["point_mae_px"]
-                torch.save(
-                    {
-                        "checkpoint_schema_version": CHECKPOINT_SCHEMA_VERSION,
-                        "adapter_id": ADAPTER_ID,
-                        "architecture_id": ARCHITECTURE_ID,
-                        "preprocessing_id": PREPROCESSING_ID,
-                        "prediction_schema_version": 1,
-                        "model_version": args.model_version or None,
-                        "model_scope": args.model_scope,
-                        "training_manifest_sha256": manifest_sha256,
-                        "model_state": model.state_dict(),
-                        "keypoint_names": KEYPOINT_NAMES,
-                        "image_width": args.image_width,
-                        "image_height": args.image_height,
-                        "stride": args.stride,
-                        "epoch": epoch,
-                        "val_metrics": val_metrics,
-                    },
-                    args.output_dir / "best.pt",
-                )
+            point_improved = val_metrics["point_mae_px"] < best_val
+            angle_score = complete_angle_checkpoint_score(val_metrics, len(val_indices))
+            angle_improved = angle_score is not None and angle_score < best_angle_val
+            if point_improved or angle_improved:
+                checkpoint = {
+                    "checkpoint_schema_version": CHECKPOINT_SCHEMA_VERSION,
+                    "adapter_id": ADAPTER_ID,
+                    "architecture_id": ARCHITECTURE_ID,
+                    "preprocessing_id": PREPROCESSING_ID,
+                    "prediction_schema_version": 1,
+                    "decoder_id": args.decoder_id,
+                    "training_mode": "cross_validation_fold",
+                    "model_version": args.model_version or None,
+                    "model_scope": args.model_scope,
+                    "training_manifest_sha256": manifest_sha256,
+                    "split_provenance": split_provenance,
+                    "model_state": model.state_dict(),
+                    "keypoint_names": KEYPOINT_NAMES,
+                    "image_width": args.image_width,
+                    "image_height": args.image_height,
+                    "stride": args.stride,
+                    "epoch": epoch,
+                    "val_metrics": val_metrics,
+                }
+                if point_improved:
+                    best_val = val_metrics["point_mae_px"]
+                    torch.save(checkpoint, args.output_dir / "best.pt")
+                if angle_improved:
+                    best_angle_val = angle_score
+                    torch.save(checkpoint, args.output_dir / "best_angles.pt")
 
     print(f"Saved log: {log_path}")
-    print(f"Saved best checkpoint: {args.output_dir / 'best.pt'}")
+    if args.train_all:
+        final_path = args.output_dir / "final.pt"
+        torch.save(
+            {
+                "checkpoint_schema_version": CHECKPOINT_SCHEMA_VERSION,
+                "adapter_id": ADAPTER_ID,
+                "architecture_id": ARCHITECTURE_ID,
+                "preprocessing_id": PREPROCESSING_ID,
+                "prediction_schema_version": 1,
+                "decoder_id": args.decoder_id,
+                "training_mode": "all_samples",
+                "model_version": args.model_version or None,
+                "model_scope": args.model_scope,
+                "training_manifest_sha256": manifest_sha256,
+                "cross_validation_summary_sha256": cv_summary_sha256,
+                "model_state": model.state_dict(),
+                "keypoint_names": KEYPOINT_NAMES,
+                "image_width": args.image_width,
+                "image_height": args.image_height,
+                "stride": args.stride,
+                "epoch": args.epochs,
+                "val_metrics": cv_metrics,
+            },
+            final_path,
+        )
+        print(f"Saved final checkpoint: {final_path}")
+    else:
+        print(f"Saved best checkpoint: {args.output_dir / 'best.pt'}")
+        best_angle_path = args.output_dir / "best_angles.pt"
+        if best_angle_path.exists():
+            print(f"Saved best-angle checkpoint: {best_angle_path}")
 
 
 if __name__ == "__main__":

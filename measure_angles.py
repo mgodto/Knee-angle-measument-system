@@ -23,12 +23,12 @@ HKA_ANGLE_FULL_NAME = "hip-knee-ankle angle"
 ANNOTATION_VERSION = 1
 ANNOTATION_POINT_SPECS = [
     ("hip", "Femur axis point"),
-    ("upper_left", "Upper line left"),
+    ("upper_left", "Upper line point A"),
     ("upper_center", "Upper line center"),
-    ("upper_right", "Upper line right"),
-    ("lower_left", "Lower line left"),
+    ("upper_right", "Upper line point B"),
+    ("lower_left", "Lower line point A"),
     ("lower_center", "Lower line center"),
-    ("lower_right", "Lower line right"),
+    ("lower_right", "Lower line point B"),
     ("ankle", "Tibia axis point"),
 ]
 ANNOTATION_POINT_NAMES = tuple(name for name, _label in ANNOTATION_POINT_SPECS)

@@ -2,14 +2,28 @@
 
 ## Final Auto-Measurement App
 
-`knee_measurement_app.py` is the doctor-facing raw-image workflow:
+`knee_measurement_app.py` v0.5.1 is the doctor-facing raw-image workflow:
 
-1. Open one **single-leg, full-length** X-ray (`JPG`, `PNG`, `BMP`, or `TIFF`).
-2. Confirm `L` or `R` when laterality cannot be inferred from the filename.
-3. The configured model predicts 8 anatomical points and 2 joint-line endpoint pairs.
-4. The right panel immediately shows the overlay, all 12 coordinates, and mLDFA, MPTA, JLCA, and HKA.
-5. A doctor can drag any predicted handle; all measurements are recalculated after release.
-6. Export writes a traceable `*_measurement.json` and `*_measurement.png` containing model hash/version and whether the coordinates were manually edited.
+1. Open a single-leg or bilateral full-length X-ray (`JPG`, `PNG`, `BMP`, or `TIFF`).
+2. Confirm the patient's anatomical `L` or `R` when laterality cannot be inferred from the filename.
+3. Every newly opened image starts in the ordinary single-leg workflow; no crop controls are shown automatically. If the source image contains both legs, click **Crop bilateral image** to reveal the target-leg ROI controls.
+4. In bilateral crop mode, separately confirm whether the target leg is on the left or right of the screen, adjust the divider if needed, and click **Confirm ROI and analyze**. The ROI retains an 8%-of-image-width margin across the divider. No inference or export is allowed before this confirmation. **Return to single-leg** cancels bilateral crop mode.
+5. The selected model predicts 8 anatomical points and 2 joint-line endpoint pairs within the confirmed target-leg ROI; results are restored to full source-image coordinates.
+6. The right panel shows the overlay, all 12 coordinates, and mLDFA, MPTA, JLCA, and HKA. A doctor can drag any handle and measurements are recalculated after release.
+7. Export writes a traceable `*_measurement.json` and `*_measurement.png` containing the source hash, model hash/version, edit history, input scope, and—for bilateral images—the confirmed ROI and selection method.
+
+Anatomical `L`/`R` and screen-left/screen-right are intentionally separate. The
+app may suggest a screen position from the usual radiographic display convention,
+but the doctor must verify the visible target leg. Changing laterality, screen
+side, divider, bilateral crop mode, or model invalidates the previous result. A bilateral
+landmark moved outside the confirmed ROI also blocks export.
+
+Bilateral exports include the anatomical side in the filename: for example,
+`exam.jpg` produces `exam_L_measurement.json`/`.png` or
+`exam_R_measurement.json`/`.png`. The doctor can therefore analyze and save L,
+then select R, confirm the opposite ROI, and save R from the same source image
+without overwriting the L result. Single-leg exports retain the established
+`exam_measurement.json`/`.png` names.
 
 Run from source:
 
@@ -26,18 +40,20 @@ python knee_measurement_app.py \
   --side L
 ```
 
-The Japanese doctor-facing quick guide is in `DOCTOR_GUIDE_JA.md`.
+Release quick guides are in `README_DOCTOR_JA.txt` and `README_DOCTOR_EN.txt`.
 
-The default model is configured in `knee_measurement_app.json` and stored at
-`models/current.pt` (see `models/README.md`). A compatible external weight can
-also be selected from **AIモデル… → AIモデルファイルを選択…**. That selection is validated,
-copied to the user's application-data folder, and persisted outside the signed
-app bundle; **標準モデルに戻す** clears the override. The GUI talks only
-to `knee_model_runtime.py`, so swapping a compatible checkpoint does not require
-a GUI change. With `version: "auto"`, the displayed version is taken from the
-checkpoint's optional `model_version`, or from its filename and epoch metadata.
-The bundled default is `20260712-bone-final-v1`, trained for confirmed
-non-arthroplasty bone images. It is not the TKA-cohort model.
+The current release bundles the three reviewed weights listed in
+`models/README.md`: Bone for non-arthroplasty images, TKA for arthroplasty
+images, and Mixed as the fallback. **自動判定** uses explicit tokens in the
+image path/name and falls back to Mixed when the type is unknown or conflicting;
+it does not diagnose an implant from image pixels. The user can always select
+Bone, TKA, or Mixed manually, and the manual choice takes priority.
+
+A compatible external weight can still be selected from **AIモデル… →
+AIモデルファイルを選択…**. That selection is validated, copied to the user's
+application-data folder, and persisted outside the signed app bundle;
+**標準モデルに戻す** clears the external override. With `version: "auto"`,
+the displayed version is taken from the checkpoint manifest.
 
 The current `small_heatmap_v1` adapter accepts weights only when the model
 architecture, preprocessing, and 12-keypoint order are compatible. A future
@@ -48,10 +64,13 @@ weights are file-only replacements in the current package.
 
 Important current scope limitations:
 
-- DICOM and un-cropped bilateral X-rays are not supported yet.
-- The bundled confirmed-bone checkpoint is a research model with internal
+- DICOM is not supported. For a bilateral raster X-ray, the doctor must explicitly
+  open **Crop bilateral image** and confirm the target-leg ROI before using its result.
+- Input scope is not inferred from image geometry. Every new image starts in the
+  simpler single-leg workflow, and the doctor activates bilateral cropping only when needed.
+- The bundled Bone, TKA, and Mixed checkpoints are research models with internal
   case-level 5-fold cross-validation only. Every landmark and angle must still
-  be reviewed by a doctor, especially on bilateral or contralateral anatomy.
+  be reviewed by a doctor.
 - This software is not a cleared medical device and must not be used as the sole
   basis for diagnosis or treatment.
 
@@ -59,7 +78,7 @@ Run automated checks:
 
 ```bash
 python -m unittest discover -s tests -v
-python validate_app_model.py
+python knee_measurement_app.py --validate-models
 ```
 
 Build the standalone inference app on the target operating system:
@@ -74,21 +93,25 @@ or on Windows:
 build_measurement_windows.bat
 ```
 
+The canonical GUI source remains the Japanese macOS interface. The Windows
+build deterministically generates a temporary English entrypoint from that same
+source with `generate_windows_english_entrypoint.py`; the generated file is
+compiled and checked for untranslated CJK text before PyInstaller runs. It is
+ignored by Git and must not be edited or committed. This keeps model routing,
+measurement, and export behavior in one implementation while avoiding Japanese
+UI/code-page problems on Windows. The Windows ZIP contains
+`README_DOCTOR_EN.txt`; the macOS ZIP keeps `README_DOCTOR_JA.txt`.
+
 Builds require Python 3.10–3.12. The current release target is Apple Silicon
 `arm64` on macOS 12.1 or newer; it is not a universal binary. The release config
 forces CPU inference. The doctor does not need Python, a GPU, package installs,
 or network access. Each build clears and sanitizes its virtual environment,
-runs unit tests, validates `models/current.pt`, bundles Python/Tk/Torch/OpenCV,
-then runs a real image-to-JSON/PNG CPU smoke test from the frozen executable in
-a stripped environment. macOS output also includes a symlink-preserving
-`dist/KneeXrayMeasurement-macOS-arm64.zip`.
-
-The reviewed bundled checkpoint is versioned at `models/current.pt`; other
-training and candidate model binaries remain ignored by Git. The current
-research artifact is `20260712-bone-final-v1` and has SHA-256
-`000a4d09b61f64106a285b4d9fd8211236f0127462d23d6a9376d421002cdbab`.
-Replace that file only with a reviewed compatible checkpoint. The build scripts
-fail closed if it is absent or incompatible.
+runs unit tests, validates all three configured models, bundles
+Python/Tk/Torch/OpenCV, then runs real image-to-JSON/PNG CPU smoke tests for all
+three models from the frozen executable in a stripped environment. The release
+archive audit permits only the application, doctor README, and the exact three
+approved model hashes; source data, caches, build trees, or an old `current.pt`
+cause the build to fail.
 
 The generated macOS app is ad-hoc signed for local testing. A release sent to
 doctors still needs an organization Developer ID signature and notarization;
