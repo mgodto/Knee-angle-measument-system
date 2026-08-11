@@ -312,6 +312,10 @@ class SingleLegV3RunnerTests(unittest.TestCase):
         self.assertNotIn("baseline_manifest_root", text)
         self.assertNotIn("sample set differs from 20260803 baseline", text)
 
+    @unittest.skipIf(
+        os.name == "nt",
+        "Bash runner integration requires POSIX path and executable semantics",
+    )
     def test_output_root_and_model_namespace_overrides_reach_every_training_call(
         self,
     ) -> None:
@@ -407,6 +411,10 @@ if args and args[0] != "-":
                 command_output = Path(command[command.index("--output-dir") + 1])
                 self.assertIn(output_root.resolve(), command_output.resolve().parents)
 
+    @unittest.skipIf(
+        os.name == "nt",
+        "Bash runner integration requires POSIX path and executable semantics",
+    )
     def test_model_namespace_rejects_empty_or_unsafe_values_before_preflight(
         self,
     ) -> None:
@@ -454,6 +462,10 @@ if args and args[0] != "-":
                     old[old.index(start) : old.index(end)],
                 )
 
+    @unittest.skipIf(
+        os.name == "nt",
+        "Bash runner integration requires POSIX path and executable semantics",
+    )
     def test_expanded_manifest_preflight_and_duplicate_rejection(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             manifest_root = Path(directory) / "manifests"
