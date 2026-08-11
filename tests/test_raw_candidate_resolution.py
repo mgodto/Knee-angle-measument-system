@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from knee_dataset_utils import RawCandidate, resolve_raw_candidate
+from knee_xray.data.knee_dataset_utils import RawCandidate, resolve_raw_candidate
 
 
 class RawCandidateResolutionTests(unittest.TestCase):

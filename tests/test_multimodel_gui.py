@@ -5,8 +5,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from knee_measurement_app import KneeMeasurementApp, MODEL_MODE_LABELS
-from knee_model_runtime import ModelSelection, ModelSpec
+from knee_xray.ui.knee_measurement_app import KneeMeasurementApp, MODEL_MODE_LABELS
+from knee_xray.inference.knee_model_runtime import ModelSelection, ModelSpec
 
 
 class _Variable:
@@ -137,7 +137,7 @@ class MultiModelGuiTests(unittest.TestCase):
         app.default_model_spec = _spec("mixed")
         app._start_model_load = mock.Mock()
 
-        with mock.patch("knee_measurement_app.filedialog.askopenfilename", return_value="/tmp/custom.pt"):
+        with mock.patch("knee_xray.ui.knee_measurement_app.filedialog.askopenfilename", return_value="/tmp/custom.pt"):
             app.browse_weight()
 
         call = app._start_model_load.call_args

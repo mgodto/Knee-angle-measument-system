@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from prepare_retraining_manifests import (
+from knee_xray.training.prepare_retraining_manifests import (
     ManifestAuditError,
     prepare_retraining_manifests,
 )

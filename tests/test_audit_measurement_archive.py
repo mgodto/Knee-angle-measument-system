@@ -15,7 +15,7 @@ import zlib
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-AUDIT_SCRIPT = PROJECT_ROOT / "audit_measurement_archive.py"
+AUDIT_SCRIPT = PROJECT_ROOT / "knee_xray" / "release" / "audit_measurement_archive.py"
 RELEASE_ROOT = "KneeXrayMeasurement-Windows-x64-v0.5.1-20260803"
 RELABELLED_RELEASE_ROOT = "KneeXrayMeasurement-Windows-x64-v0.6.0-20260811"
 CANDIDATE_RELEASE_ROOT = "KneeXrayMeasurement-ResearchCandidate-Windows-x64-v0.6.0-20260811"

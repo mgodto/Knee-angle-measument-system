@@ -7,13 +7,13 @@ from unittest import mock
 
 import numpy as np
 
-from knee_measurement_app import (
+from knee_xray.ui.knee_measurement_app import (
     INPUT_SCOPE_LABELS,
     SCREEN_SIDE_LABELS,
     SCREEN_SIDE_UNSELECTED,
     KneeMeasurementApp,
 )
-from knee_model_runtime import (
+from knee_xray.inference.knee_model_runtime import (
     AnalysisResult,
     LandmarkPrediction,
     ModelInfo,
@@ -138,7 +138,7 @@ class P1GuiSafetyTests(unittest.TestCase):
             },
         }
 
-        with mock.patch("knee_measurement_app.save_model_preference") as save_preference:
+        with mock.patch("knee_xray.ui.knee_measurement_app.save_model_preference") as save_preference:
             app._finish_model_event(event)
 
         save_preference.assert_called_once_with(spec, expected_sha256="c" * 64)

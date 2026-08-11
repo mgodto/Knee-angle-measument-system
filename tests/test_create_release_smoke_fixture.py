@@ -7,7 +7,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from create_release_smoke_fixture import FIXTURE_SIZE, create_fixture
+from knee_xray.release.create_release_smoke_fixture import FIXTURE_SIZE, create_fixture
 
 
 class ReleaseSmokeFixtureTests(unittest.TestCase):

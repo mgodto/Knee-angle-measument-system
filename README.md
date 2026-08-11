@@ -32,7 +32,7 @@ without overwriting the L result. Single-leg exports retain the established
 Run from source:
 
 ```bash
-python -m pip install -r requirements-app.txt
+python -m pip install -r requirements/requirements-app.txt
 python knee_measurement_app.py
 ```
 
@@ -44,7 +44,7 @@ python knee_measurement_app.py \
   --side L
 ```
 
-Release quick guides are in `README_DOCTOR_JA.txt` and `README_DOCTOR_EN.txt`.
+Release quick guides are in `docs/README_DOCTOR_JA.txt` and `docs/README_DOCTOR_EN.txt`.
 
 The v0.6.0 Research Candidate bundles the three tail-QA-curated v4 weights listed
 in `models/README.md`: Bone for non-arthroplasty images, TKA for arthroplasty
@@ -92,23 +92,36 @@ python knee_measurement_app.py --validate-models \
 Build the standalone inference app on the target operating system:
 
 ```bash
-./build_measurement_mac.sh
+./scripts/build/build_measurement_mac.sh
 ```
 
 or on Windows:
 
 ```bat
-build_measurement_windows.bat
+scripts\build\build_measurement_windows.bat
 ```
+
+PyInstaller staging stays under `build/pyinstaller-dist/`. After the smoke tests
+and archive audit succeed, the final ZIP is written to the platform-specific
+delivery directory:
+
+```text
+deliverables/measurement/macos/
+deliverables/measurement/windows/
+```
+
+Each directory keeps only its three most recent ZIPs; a successful build applies
+that retention rule through `knee_xray.release.retain_deliverables`.
 
 The canonical GUI source remains the Japanese macOS interface. The Windows
 build deterministically generates a temporary English entrypoint from that same
-source with `generate_windows_english_entrypoint.py`; the generated file is
+source with `knee_xray.release.generate_windows_english_entrypoint`; the generated file is
 compiled and checked for untranslated CJK text before PyInstaller runs. It is
 ignored by Git and must not be edited or committed. This keeps model routing,
 measurement, and export behavior in one implementation while avoiding Japanese
 UI/code-page problems on Windows. The Windows ZIP contains
-`README_DOCTOR_EN.txt`; the macOS ZIP keeps `README_DOCTOR_JA.txt`.
+`README_DOCTOR_EN.txt`; the macOS ZIP keeps `README_DOCTOR_JA.txt`. Their source
+files live under `docs/`.
 
 Builds require Python 3.10–3.12. The current candidate target is Apple Silicon
 `arm64` on macOS 12.1 or newer; it is not a universal binary. The release config
@@ -144,21 +157,30 @@ The measurement side matters because `mLDFA` uses the lateral distal femur angle
 
 ## Mac Packaging
 
-The `KneeAnnotationTool.app` at the project root is only a development launcher. It expects `annotate_gui.py`, `measure_angles.py`, Python, and Python packages to exist next to it on the same machine.
+The untracked `KneeAnnotationTool.app` at the project root is only a legacy
+development launcher. In a working copy it delegates through `annotate_gui.py`
+to the canonical `knee_xray/` package, so the organized repository layout,
+Python, and its dependencies must remain available on that machine. It is not
+portable and is not canonical source code.
 
 To create a portable macOS app for another user, build the PyInstaller app on macOS:
 
 ```bash
-./build_mac.sh
+./scripts/build/build_mac.sh
 ```
 
 The portable output will be:
 
 ```text
-KneeAnnotationTool-macOS.zip
+deliverables/annotation/macos/KneeAnnotationTool-macOS-v<version>-build<build>-<UTC timestamp>.zip
 ```
 
-Send `KneeAnnotationTool-macOS.zip`, not the development launcher at the project root. This zip intentionally contains the same `dist/` folder layout as the previous working package. The standalone app writes exported annotations to:
+Send the newest ZIP from `deliverables/annotation/macos/`, not the development
+launcher at the project root. The filename records the app version, build, and
+UTC build timestamp. This ZIP intentionally contains the same internal `dist/`
+folder layout as the previous working package; repository-level build staging is
+instead kept under `build/pyinstaller-dist/`. The standalone app writes exported
+annotations to:
 
 ```text
 ~/Documents/Knee_Xray_annotations
@@ -176,20 +198,25 @@ If macOS blocks the app because it was downloaded from the internet, right-click
 If you want to send the tool to a doctor as a standalone Windows app, build it on a Windows machine:
 
 ```bat
-build_windows.bat
+scripts\build\build_windows.bat
 ```
 
 The output will be:
 
 ```text
-dist\KneeAnnotationTool\
+deliverables\annotation\windows\KneeAnnotationTool-Windows-x64-v<version>-build<build>-<UTC timestamp>.zip
 ```
 
-Send the whole `dist\KneeAnnotationTool` folder. The doctor should launch:
+Send the newest ZIP from `deliverables\annotation\windows\`. After extracting
+the ZIP, the doctor should launch:
 
 ```text
 KneeAnnotationTool.exe
 ```
+
+Annotation builds also keep only the three most recent ZIPs in each platform
+directory. The macOS and Windows histories are pruned independently through
+`knee_xray.release.retain_deliverables` after a new archive is complete.
 
 This is the practical rule:
 
@@ -210,5 +237,5 @@ Packaging uses:
 Install them with:
 
 ```bash
-pip install -r requirements-packaging.txt
+pip install -r requirements/requirements-packaging.txt
 ```

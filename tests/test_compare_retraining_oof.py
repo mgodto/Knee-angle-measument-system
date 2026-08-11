@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from compare_retraining_oof import (
+from knee_xray.training.compare_retraining_oof import (
     METRIC_COLUMNS,
     MODEL_CV_DIRS,
     ComparisonError,

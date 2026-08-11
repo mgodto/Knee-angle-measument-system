@@ -8,7 +8,7 @@ from pathlib import Path
 import torch
 import torch.nn.functional as F
 
-from train_keypoint_baseline import (
+from knee_xray.training.train_keypoint_baseline import (
     case_ids_sha256,
     case_split_provenance,
     complete_angle_checkpoint_score,

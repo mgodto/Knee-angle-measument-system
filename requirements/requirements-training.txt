@@ -1,0 +1,4 @@
+# Model training and evaluation dependencies.
+torch
+opencv-python
+numpy

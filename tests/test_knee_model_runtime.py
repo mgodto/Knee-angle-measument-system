@@ -12,9 +12,9 @@ from unittest import mock
 import cv2
 import numpy as np
 
-from knee_measurement_app import KneeMeasurementApp, safe_export_stem
-from measure_angles import RENDER_STYLE_CLINICAL, measure_from_named_points
-from knee_model_runtime import (
+from knee_xray.ui.knee_measurement_app import KneeMeasurementApp, safe_export_stem
+from knee_xray.core.measure_angles import RENDER_STYLE_CLINICAL, measure_from_named_points
+from knee_xray.inference.knee_model_runtime import (
     EXPECTED_KEYPOINT_NAMES,
     AnalysisResult,
     KneeAnalysisService,
@@ -260,7 +260,7 @@ class GuiModelSwitchTests(unittest.TestCase):
         app._start_inference = mock.Mock()
 
         path = Path("001L.png").resolve()
-        with mock.patch("knee_measurement_app.infer_knee_side_from_sources", return_value="L"):
+        with mock.patch("knee_xray.ui.knee_measurement_app.infer_knee_side_from_sources", return_value="L"):
             app.open_path(path)
 
         self.assertEqual(app.raw_path, path)
@@ -585,7 +585,7 @@ class CheckpointTests(unittest.TestCase):
     def test_external_legacy_checkpoint_requires_manifest(self) -> None:
         try:
             import torch
-            from knee_keypoint_model import SmallHeatmapNet
+            from knee_xray.ml.knee_keypoint_model import SmallHeatmapNet
         except ImportError:
             self.skipTest("PyTorch is not installed")
         with tempfile.TemporaryDirectory() as directory:
@@ -631,7 +631,7 @@ class CheckpointTests(unittest.TestCase):
     def test_non_finite_checkpoint_is_rejected(self) -> None:
         try:
             import torch
-            from knee_keypoint_model import SmallHeatmapNet
+            from knee_xray.ml.knee_keypoint_model import SmallHeatmapNet
         except ImportError:
             self.skipTest("PyTorch is not installed")
         with tempfile.TemporaryDirectory() as directory:

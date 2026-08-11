@@ -11,7 +11,7 @@ from unittest import mock
 import cv2
 import numpy as np
 
-from import_annotation_batch import (
+from knee_xray.data.import_annotation_batch import (
     Candidate,
     ReplacementPlan,
     adapt_annotation_schema,
@@ -25,8 +25,8 @@ from import_annotation_batch import (
     sha256_file,
     validate_dataset_root,
 )
-from measure_angles import ANNOTATION_LINE_NAMES, ANNOTATION_POINT_NAMES
-from organize_implant_dataset import DATASET_FOLDERS
+from knee_xray.core.measure_angles import ANNOTATION_LINE_NAMES, ANNOTATION_POINT_NAMES
+from knee_xray.data.organize_implant_dataset import DATASET_FOLDERS
 
 
 def write_manifest(path: Path, rows: list[dict[str, str]]) -> None:
@@ -391,7 +391,7 @@ class ImportAnnotationBatchTests(unittest.TestCase):
             }
 
             with mock.patch(
-                "import_annotation_batch.measure_from_named_points",
+                "knee_xray.data.import_annotation_batch.measure_from_named_points",
                 return_value=({"mldfa_angle": 90.0, "mpta_angle": 89.0}, {}),
             ):
                 candidates, decisions = collect_candidates(batch, root / "dataset", overrides)
@@ -405,7 +405,7 @@ class ImportAnnotationBatchTests(unittest.TestCase):
             payload = measurement_annotation(raw_path, side="L", sha256="0" * 64)
             write_json(annotation_path, payload)
             with mock.patch(
-                "import_annotation_batch.measure_from_named_points",
+                "knee_xray.data.import_annotation_batch.measure_from_named_points",
                 return_value=({"mldfa_angle": 90.0, "mpta_angle": 89.0}, {}),
             ):
                 bad_candidates, bad_decisions = collect_candidates(batch, root / "dataset", overrides)
@@ -722,7 +722,7 @@ class ImportAnnotationBatchTests(unittest.TestCase):
             )
             make_sample(stage / tka_folder, "samples/058R_pre_TKA", "new")
 
-            with mock.patch("import_annotation_batch.validate_dataset_root", return_value=[]):
+            with mock.patch("knee_xray.data.import_annotation_batch.validate_dataset_root", return_value=[]):
                 counts = merge_stage(
                     stage,
                     target,
@@ -796,7 +796,7 @@ class ImportAnnotationBatchTests(unittest.TestCase):
                 new_sample_id=new_row["sample_id"],
             )
 
-            with mock.patch("import_annotation_batch.validate_dataset_root", return_value=[]):
+            with mock.patch("knee_xray.data.import_annotation_batch.validate_dataset_root", return_value=[]):
                 merge_stage(
                     stage,
                     target,
@@ -836,7 +836,7 @@ class ImportAnnotationBatchTests(unittest.TestCase):
             )
 
             with mock.patch(
-                "import_annotation_batch.validate_dataset_root",
+                "knee_xray.data.import_annotation_batch.validate_dataset_root",
                 return_value=["duplicate_raw_sha256:test"],
             ):
                 with self.assertRaisesRegex(ValueError, "Merged dataset validation failed"):
@@ -881,7 +881,7 @@ class ImportAnnotationBatchTests(unittest.TestCase):
                         }
                     )
 
-            with mock.patch("import_annotation_batch.validate_manifest", return_value=([], {})):
+            with mock.patch("knee_xray.data.import_annotation_batch.validate_manifest", return_value=([], {})):
                 errors = validate_dataset_root(root)
 
             self.assertTrue(any(error.startswith("duplicate_sample_id:duplicate_id") for error in errors))

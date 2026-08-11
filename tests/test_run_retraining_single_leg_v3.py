@@ -12,8 +12,8 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-RUNNER = REPO_ROOT / "run_retraining_single_leg_v3_20260811.sh"
-V2_RUNNER = REPO_ROOT / "run_retraining_single_leg_v2_20260803.sh"
+RUNNER = REPO_ROOT / "scripts" / "training" / "run_retraining_single_leg_v3_20260811.sh"
+V2_RUNNER = REPO_ROOT / "scripts" / "training" / "run_retraining_single_leg_v2_20260803.sh"
 MANIFEST_FIELDS = (
     "sample_id",
     "case_id",
@@ -373,7 +373,7 @@ if args and args[0] != "-":
             training_commands = [
                 command
                 for command in commands
-                if Path(command[0]).name == "train_keypoint_baseline.py"
+                if command[:2] == ["-m", "knee_xray.training.train_keypoint_baseline"]
             ]
             self.assertEqual(len(training_commands), 18)
 

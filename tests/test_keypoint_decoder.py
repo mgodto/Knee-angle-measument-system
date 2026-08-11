@@ -6,7 +6,7 @@ from pathlib import Path
 
 import torch
 
-from knee_keypoint_model import (
+from knee_xray.ml.knee_keypoint_model import (
     ADAPTER_ID,
     ARCHITECTURE_ID,
     CHECKPOINT_SCHEMA_VERSION,
@@ -17,7 +17,7 @@ from knee_keypoint_model import (
     SmallHeatmapNet,
     decode_heatmaps_for_shape,
 )
-from knee_model_runtime import ModelLoadError, ModelSpec, SmallHeatmapV1Adapter
+from knee_xray.inference.knee_model_runtime import ModelLoadError, ModelSpec, SmallHeatmapV1Adapter
 
 
 class DecoderTests(unittest.TestCase):

@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from summarize_keypoint_cv import (
+from knee_xray.training.summarize_keypoint_cv import (
     CASE_ID_HASH_ALGORITHM,
     CVSummaryError,
     case_ids_sha256,

@@ -11,16 +11,16 @@ import cv2
 import numpy as np
 import torch
 
-from evaluate_keypoint_checkpoint import run_evaluation, select_manifest_rows, sha256_path
-from knee_keypoint_model import (
+from knee_xray.training.evaluate_keypoint_checkpoint import run_evaluation, select_manifest_rows, sha256_path
+from knee_xray.ml.knee_keypoint_model import (
     ADAPTER_ID,
     ARCHITECTURE_ID,
     KEYPOINT_NAMES,
     PREPROCESSING_ID,
     SmallHeatmapNet,
 )
-from measure_angles import measure_from_named_points
-from train_keypoint_baseline import case_split_provenance
+from knee_xray.core.measure_angles import measure_from_named_points
+from knee_xray.training.train_keypoint_baseline import case_split_provenance
 
 
 def synthetic_geometry() -> tuple[dict[str, dict[str, float]], dict[str, dict[str, dict[str, float]]]]:
@@ -174,7 +174,7 @@ class CheckpointEvaluationTests(unittest.TestCase):
             output_dir = root / "evaluation"
 
             with mock.patch(
-                "evaluate_keypoint_checkpoint.predict_keypoints",
+                "knee_xray.training.evaluate_keypoint_checkpoint.predict_keypoints",
                 return_value=target_coords,
             ):
                 summary = run_evaluation(
@@ -213,7 +213,7 @@ class CheckpointEvaluationTests(unittest.TestCase):
             output_dir = root / "evaluation-failure"
 
             with mock.patch(
-                "evaluate_keypoint_checkpoint.predict_keypoints",
+                "knee_xray.training.evaluate_keypoint_checkpoint.predict_keypoints",
                 return_value=np.zeros_like(target_coords),
             ):
                 summary = run_evaluation(
@@ -254,7 +254,7 @@ class CheckpointEvaluationTests(unittest.TestCase):
             )
 
             with mock.patch(
-                "evaluate_keypoint_checkpoint.predict_keypoints",
+                "knee_xray.training.evaluate_keypoint_checkpoint.predict_keypoints",
                 return_value=target_coords,
             ):
                 summary = run_evaluation(
@@ -327,7 +327,7 @@ class CheckpointEvaluationTests(unittest.TestCase):
                 writer.writerows(rows)
 
             with mock.patch(
-                "evaluate_keypoint_checkpoint.predict_keypoints",
+                "knee_xray.training.evaluate_keypoint_checkpoint.predict_keypoints",
                 return_value=target_coords,
             ):
                 summary = run_evaluation(

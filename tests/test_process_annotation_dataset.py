@@ -11,9 +11,9 @@ from unittest import mock
 import cv2
 import numpy as np
 
-from build_dataset_manifest import MANIFEST_FIELDS
-from measure_angles import ANNOTATION_LINE_NAMES, ANNOTATION_POINT_NAMES
-from process_annotation_dataset import CropBox, adjust_annotation, choose_crop_box, process_dataset
+from knee_xray.data.build_dataset_manifest import MANIFEST_FIELDS
+from knee_xray.core.measure_angles import ANNOTATION_LINE_NAMES, ANNOTATION_POINT_NAMES
+from knee_xray.data.process_annotation_dataset import CropBox, adjust_annotation, choose_crop_box, process_dataset
 
 
 def annotation_at(
@@ -103,7 +103,7 @@ class ProcessAnnotationDatasetTests(unittest.TestCase):
 
             output_dir = root / "processed"
             with mock.patch(
-                "process_annotation_dataset.measure_from_named_points",
+                "knee_xray.data.process_annotation_dataset.measure_from_named_points",
                 return_value=({"mldfa_angle": 90.0, "mpta_angle": 89.0}, {}),
             ):
                 rows = process_dataset(manifest_path, output_dir, render_overlays=False)

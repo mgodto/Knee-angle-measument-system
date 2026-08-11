@@ -20,15 +20,14 @@ env/
 .venv-measurement/
 
 # PyInstaller / app build artifacts
-build/
-dist/
+/build/
+/deliverables/
 .pyinstaller-cache/
 *.app/
 *.dmg
 *.pkg
 *.exe
 *.msi
-*.zip
 *.pt
 !models/bone.pt
 !models/tka.pt

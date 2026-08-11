@@ -7,11 +7,11 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from knee_measurement_app import (
+from knee_xray.ui.knee_measurement_app import (
     model_version_expectation,
     validate_expected_model_versions,
 )
-from knee_model_runtime import ModelLoadError, load_app_config, resolve_model_selection
+from knee_xray.inference.knee_model_runtime import ModelLoadError, load_app_config, resolve_model_selection
 
 
 def _model_payload(checkpoint: str, display_name: str, cohort: str) -> dict[str, object]:

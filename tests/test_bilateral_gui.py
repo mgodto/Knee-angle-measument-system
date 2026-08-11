@@ -8,14 +8,14 @@ from unittest import mock
 
 import numpy as np
 
-from knee_measurement_app import (
+from knee_xray.ui.knee_measurement_app import (
     INPUT_SCOPE_LABELS,
     SCREEN_SIDE_LABELS,
     SCREEN_SIDE_UNSELECTED,
     KneeMeasurementApp,
     measurement_export_stem,
 )
-from knee_model_runtime import ModelSelection
+from knee_xray.inference.knee_model_runtime import ModelSelection
 
 
 class _Variable:
@@ -115,7 +115,7 @@ class BilateralGuiTests(unittest.TestCase):
         app._refresh_action_states = mock.Mock()
 
         with mock.patch(
-            "knee_measurement_app.read_color",
+            "knee_xray.ui.knee_measurement_app.read_color",
             return_value=np.zeros((1000, 700, 3), dtype=np.uint8),
         ):
             app.open_path(Path("001L_wide.png"))
@@ -276,8 +276,8 @@ class BilateralGuiTests(unittest.TestCase):
         app.result_state_var = _Variable()
 
         with (
-            mock.patch("knee_measurement_app.threading.Thread", _ImmediateThread),
-            mock.patch("knee_measurement_app.replace", side_effect=lambda value, **_kwargs: value),
+            mock.patch("knee_xray.ui.knee_measurement_app.threading.Thread", _ImmediateThread),
+            mock.patch("knee_xray.ui.knee_measurement_app.replace", side_effect=lambda value, **_kwargs: value),
         ):
             app._start_inference()
 

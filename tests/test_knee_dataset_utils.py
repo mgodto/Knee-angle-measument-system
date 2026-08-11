@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from knee_dataset_utils import annotation_keypoints
-from measure_angles import ANNOTATION_POINT_NAMES
+from knee_xray.data.knee_dataset_utils import annotation_keypoints
+from knee_xray.core.measure_angles import ANNOTATION_POINT_NAMES
 
 
 class AnnotationKeypointTests(unittest.TestCase):

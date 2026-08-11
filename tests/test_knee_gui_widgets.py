@@ -7,7 +7,7 @@ from unittest import mock
 import numpy as np
 from PIL import Image
 
-from knee_gui_widgets import InteractiveImageCanvas, RESAMPLING
+from knee_xray.ui.knee_gui_widgets import InteractiveImageCanvas, RESAMPLING
 
 
 class _FakeCanvas:
@@ -145,7 +145,7 @@ class InteractiveImageCanvasTests(unittest.TestCase):
         view._text_id = 2
         view.canvas = _RenderCanvas()
 
-        with mock.patch("knee_gui_widgets.ImageTk.PhotoImage", return_value=object()) as photo:
+        with mock.patch("knee_xray.ui.knee_gui_widgets.ImageTk.PhotoImage", return_value=object()) as photo:
             view._render()
             view._render()
 

@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from knee_model_runtime import (
+from knee_xray.inference.knee_model_runtime import (
     EXPECTED_KEYPOINT_NAMES,
     ModelLoadError,
     ModelSpec,
@@ -35,7 +35,7 @@ class WeightConsistencyTests(unittest.TestCase):
     def test_loaded_model_info_hashes_the_exact_bytes_given_to_torch(self) -> None:
         try:
             import torch
-            from knee_keypoint_model import SmallHeatmapNet
+            from knee_xray.ml.knee_keypoint_model import SmallHeatmapNet
         except ImportError:
             self.skipTest("PyTorch is not installed")
 
@@ -96,7 +96,7 @@ class WeightConsistencyTests(unittest.TestCase):
 
             with mock.patch.dict(os.environ, {"KNEE_XRAY_APP_DATA": str(root / "app-data")}):
                 with mock.patch(
-                    "knee_model_runtime.shutil.copy2",
+                    "knee_xray.inference.knee_model_runtime.shutil.copy2",
                     side_effect=change_source_then_copy,
                 ):
                     with self.assertRaisesRegex(ModelLoadError, "\u4fdd\u5b58\u4e2d\u306b\u5909\u66f4"):

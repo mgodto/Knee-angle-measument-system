@@ -3,6 +3,9 @@ name: Build Measurement GUI Windows x64
 on:
   pull_request:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -26,24 +29,24 @@ jobs:
           python-version: "3.11"
           architecture: "x64"
           cache: pip
-          cache-dependency-path: requirements-app.txt
+          cache-dependency-path: requirements/requirements-app.txt
 
       - name: Generate and compile English Windows entrypoint
         shell: cmd
         run: >-
-          python generate_windows_english_entrypoint.py
-          --source knee_measurement_app.py
+          python -m knee_xray.release.generate_windows_english_entrypoint
+          --source knee_xray/ui/knee_measurement_app.py
           --output knee_measurement_app_windows.py
 
       - name: Build, smoke test, and audit package
         shell: cmd
-        run: build_measurement_windows.bat
+        run: scripts\build\build_measurement_windows.bat
 
       - name: Upload final Windows release ZIP
         uses: actions/upload-artifact@v4
         with:
           name: KneeXrayMeasurement-ResearchCandidate-Windows-x64-v0.6.0-20260811
-          path: dist/KneeXrayMeasurement-ResearchCandidate-Windows-x64-v0.6.0-20260811.zip
+          path: deliverables/measurement/windows/*.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 7

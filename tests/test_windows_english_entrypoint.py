@@ -6,11 +6,11 @@ import re
 import tempfile
 import unittest
 
-from generate_windows_english_entrypoint import generate
+from knee_xray.release.generate_windows_english_entrypoint import generate
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-CANONICAL_APP = PROJECT_ROOT / "knee_measurement_app.py"
+CANONICAL_APP = PROJECT_ROOT / "knee_xray" / "ui" / "knee_measurement_app.py"
 CJK_PATTERN = re.compile(r"[\u3040-\u30ff\u3400-\u9fff]")
 
 
