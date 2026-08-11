@@ -5,12 +5,15 @@ set -euo pipefail
 cd "$(dirname "$0")"
 unset PYTHONPATH PYTHONHOME
 
-app_version="0.5.1"
-release_date="20260803"
-expected_bone_sha="24481410c3fd2ce2222eed422f4d519f72da95ba232570ee31a4827d45201cfd"
-expected_tka_sha="87027887ec091068a9b91b01a881092400fed58eb8d3eeaaeddb10e8be398e5f"
-expected_mixed_sha="f0cfa67f34691f3d81da0e10f0d6ff753dcf71f5aafd278ddb6bf146efc6ba45"
-release_root="KneeXrayMeasurement-macOS-arm64-v${app_version}-${release_date}"
+app_version="0.6.0"
+release_date="20260811"
+expected_bone_version="20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-bone-final-v1"
+expected_tka_version="20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-tka-final-v1"
+expected_mixed_version="20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-bone-tka-mixed-final-v1"
+expected_bone_sha="36e8fee67c7c6bad8071a5a7ff8dbc713d76e28482c2a26798abd15ba3334862"
+expected_tka_sha="23a416f8c376156b3fa323298d3e45ae00060d619e0215754a46f2a2254a1669"
+expected_mixed_sha="5e2f5087a433aa6bc9c58d792e132d88f1098952df446512375818a779d1254e"
+release_root="KneeXrayMeasurement-ResearchCandidate-macOS-arm64-v${app_version}-${release_date}"
 release_zip="$PWD/dist/${release_root}.zip"
 
 for model_path in models/bone.pt models/tka.pt models/mixed.pt; do
@@ -29,8 +32,11 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements-app.txt
 python -m pip check
 python -m unittest discover -s tests -v
-python -c 'from knee_measurement_app import APP_VERSION; assert APP_VERSION == "0.5.1", APP_VERSION'
-python knee_measurement_app.py --validate-models
+python -c 'from knee_measurement_app import APP_RELEASE_CHANNEL, APP_VERSION; assert APP_VERSION == "0.6.0", APP_VERSION; assert APP_RELEASE_CHANNEL == "INTERNAL RESEARCH CANDIDATE - NOT FOR CLINICAL USE", APP_RELEASE_CHANNEL'
+python knee_measurement_app.py --validate-models \
+  --expected-model-version "bone=$expected_bone_version" \
+  --expected-model-version "tka=$expected_tka_version" \
+  --expected-model-version "mixed=$expected_mixed_version"
 
 smoke_base="$(mktemp "${TMPDIR:-/tmp}/knee-xray-smoke.XXXXXX")"
 smoke_image="${smoke_base}-unknown.png"
@@ -78,7 +84,10 @@ if find -L "$extracted_app" -type l -print -quit | grep -q .; then
   exit 1
 fi
 env -i HOME="$smoke_home" PATH="/usr/bin:/bin" TMPDIR="${TMPDIR:-/tmp}" \
-  "$extracted_app/Contents/MacOS/KneeXrayMeasurement" --validate-models
+  "$extracted_app/Contents/MacOS/KneeXrayMeasurement" --validate-models \
+  --expected-model-version "bone=$expected_bone_version" \
+  --expected-model-version "tka=$expected_tka_version" \
+  --expected-model-version "mixed=$expected_mixed_version"
 env -i HOME="$smoke_home" PATH="/usr/bin:/bin" TMPDIR="${TMPDIR:-/tmp}" \
   "$extracted_app/Contents/MacOS/KneeXrayMeasurement" \
   --smoke-test-image "$smoke_image" --side R --model-mode bone

@@ -431,7 +431,9 @@ class AnalysisServiceTests(unittest.TestCase):
                 result.measurement,
                 app_version="test",
                 manually_modified=False,
+                app_release_channel="internal-test-candidate",
             )
+            self.assertEqual(record["app"]["release_channel"], "internal-test-candidate")
             self.assertEqual(record["model"]["checkpoint_sha256"], "a" * 64)
             self.assertFalse(record["analysis"]["manually_modified"])
             self.assertEqual(set(record["angles_deg"]), {"mLDFA", "MPTA", "JLCA", "HKA"})

@@ -106,8 +106,8 @@ if sys.platform == "darwin":
         info_plist={
             "CFBundleName": "下肢全長X線自動計測",
             "CFBundleDisplayName": "下肢全長X線 自動計測",
-            "CFBundleShortVersionString": "0.5.1",
-            "CFBundleVersion": "8",
+            "CFBundleShortVersionString": "0.6.0",
+            "CFBundleVersion": "9",
             "NSHighResolutionCapable": True,
             "LSMinimumSystemVersion": "12.1",
         },

@@ -26,6 +26,11 @@ class WindowsEnglishEntrypointTests(unittest.TestCase):
         self.assertFalse(CJK_PATTERN.search(first))
         first.encode("ascii")
         self.assertIn("WINDOWS_ENGLISH_BUILD = True", first)
+        self.assertIn('APP_VERSION = "0.6.0"', first)
+        self.assertIn(
+            'APP_RELEASE_CHANNEL = "INTERNAL RESEARCH CANDIDATE - NOT FOR CLINICAL USE"',
+            first,
+        )
         self.assertIn('APP_TITLE = "Full-Length Leg X-ray Automated Measurement"', first)
         self.assertIn('"auto": "Auto"', first)
         self.assertIn('text="Crop bilateral image"', first)

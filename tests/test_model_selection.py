@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import argparse
 import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
+from knee_measurement_app import (
+    model_version_expectation,
+    validate_expected_model_versions,
+)
 from knee_model_runtime import ModelLoadError, load_app_config, resolve_model_selection
 
 
@@ -25,6 +31,94 @@ def _model_payload(checkpoint: str, display_name: str, cohort: str) -> dict[str,
 
 def _write_config(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+
+class ReleaseModelVersionExpectationTests(unittest.TestCase):
+    def test_accepts_exact_builtin_model_key_and_nonempty_version(self) -> None:
+        self.assertEqual(
+            model_version_expectation(
+                "bone=20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-bone-final-v1"
+            ),
+            (
+                "bone",
+                "20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-bone-final-v1",
+            ),
+        )
+
+    def test_rejects_unknown_blank_or_unscoped_expectation(self) -> None:
+        for value in ("external=v1", "bone=", "v1"):
+            with self.subTest(value=value), self.assertRaises(argparse.ArgumentTypeError):
+                model_version_expectation(value)
+
+    def test_release_gate_rejects_config_version_override(self) -> None:
+        config = SimpleNamespace(
+            models={
+                "bone": SimpleNamespace(version="forged-version"),
+                "tka": SimpleNamespace(version="auto"),
+                "mixed": SimpleNamespace(version="auto"),
+            }
+        )
+        infos = {
+            key: SimpleNamespace(version="expected-version")
+            for key in config.models
+        }
+        with self.assertRaisesRegex(RuntimeError, "must use config version 'auto'"):
+            validate_expected_model_versions(
+                config,
+                infos,
+                [(key, "expected-version") for key in config.models],
+            )
+
+    def test_release_gate_accepts_only_exact_checkpoint_versions(self) -> None:
+        config = SimpleNamespace(
+            models={
+                key: SimpleNamespace(version="auto")
+                for key in ("bone", "tka", "mixed")
+            }
+        )
+        infos = {
+            key: SimpleNamespace(version=f"{key}-checkpoint-version")
+            for key in config.models
+        }
+        expectations = [
+            (key, f"{key}-checkpoint-version") for key in config.models
+        ]
+        validate_expected_model_versions(config, infos, expectations)
+        with self.assertRaisesRegex(RuntimeError, "does not match expected"):
+            validate_expected_model_versions(
+                config,
+                infos,
+                [(key, "wrong-version") for key in config.models],
+            )
+
+    def test_release_gate_rejects_incomplete_or_duplicate_expectations(self) -> None:
+        config = SimpleNamespace(
+            models={
+                key: SimpleNamespace(version="auto")
+                for key in ("bone", "tka", "mixed")
+            }
+        )
+        infos = {
+            key: SimpleNamespace(version=f"{key}-checkpoint-version")
+            for key in config.models
+        }
+        with self.assertRaisesRegex(RuntimeError, "cover exactly"):
+            validate_expected_model_versions(
+                config,
+                infos,
+                [("bone", "bone-checkpoint-version")],
+            )
+        with self.assertRaisesRegex(RuntimeError, "Duplicate"):
+            validate_expected_model_versions(
+                config,
+                infos,
+                [
+                    ("bone", "bone-checkpoint-version"),
+                    ("bone", "bone-checkpoint-version"),
+                    ("tka", "tka-checkpoint-version"),
+                    ("mixed", "mixed-checkpoint-version"),
+                ],
+            )
 
 
 class MultiModelConfigTests(unittest.TestCase):

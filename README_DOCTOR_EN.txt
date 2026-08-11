@@ -1,18 +1,21 @@
-Full-Length Leg X-ray Automated Measurement v0.5.1 (Research Use)
-================================================================
+INTERNAL RESEARCH CANDIDATE - NOT FOR CLINICAL USE
+NOT FORMALLY PROMOTED. FOR INTERNAL RESEARCH AND EVALUATION ONLY.
+
+Full-Length Leg X-ray Automated Measurement v0.6.0
+==================================================
 
 Bundled AI models
   Bone (no knee implant)
-    Version: 20260720-bone-final-v1
-    SHA-256: 24481410c3fd2ce2222eed422f4d519f72da95ba232570ee31a4827d45201cfd
+    Version: 20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-bone-final-v1
+    SHA-256: 36e8fee67c7c6bad8071a5a7ff8dbc713d76e28482c2a26798abd15ba3334862
 
   TKA (knee implant)
-    Version: 20260720-tka-final-v1
-    SHA-256: 87027887ec091068a9b91b01a881092400fed58eb8d3eeaaeddb10e8be398e5f
+    Version: 20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-tka-final-v1
+    SHA-256: 23a416f8c376156b3fa323298d3e45ae00060d619e0215754a46f2a2254a1669
 
   Mixed (Bone/TKA; fallback when type is unknown)
-    Version: 20260720-bone-tka-mixed-final-v1
-    SHA-256: f0cfa67f34691f3d81da0e10f0d6ff753dcf71f5aafd278ddb6bf146efc6ba45
+    Version: 20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-bone-tka-mixed-final-v1
+    SHA-256: 5e2f5087a433aa6bc9c58d792e132d88f1098952df446512375818a779d1254e
 
 Model selection
   Auto uses explicit Bone/TKA or implant/no-implant tokens in the image file
@@ -52,7 +55,8 @@ Saving results and provenance
   Only the confirmed ROI is sent to the model for a bilateral image. Display,
   editing, and export coordinates are mapped back to the complete source image.
   The measurement JSON stores the source filename, dimensions, SHA-256, input
-  scope, model information, and manual-edit history. For a bilateral image,
+  scope, application version/release channel, model information, and
+  manual-edit history. For a bilateral image,
   analysis.inference_roi additionally stores x0/y0/x1/y1, width, height,
   source-image coordinate space, selection method, and confirmed=true. This
   provenance lets the training importer reuse the same approved target-leg crop.
@@ -74,7 +78,16 @@ Starting the Windows application
   This research build is not code signed. If your organization's security
   policy blocks it, ask your administrator before trying again.
 
+If a previous external model preference remains
+  Open the AI model menu and select Return to Auto to restore the built-in
+  models, then select one of the three model modes listed above.
+
 Important
+  - This package is an internal Research Candidate. It is not an approved
+    clinical release and must not be used for clinical diagnosis or treatment.
+  - Internal 5-fold OOF evaluation can contain large individual errors, and
+    automatic GUI warnings do not detect every such error. Review every point,
+    joint line, and angle against the source image.
   - Supports single-leg or bilateral full-length JPG, PNG, BMP, and TIFF images.
   - DICOM is not supported.
   - For an image containing both legs, always select Crop bilateral image and

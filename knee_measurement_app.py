@@ -53,8 +53,9 @@ from measure_angles import (
 )
 
 
-APP_VERSION = "0.5.1"
+APP_VERSION = "0.6.0"
 APP_TITLE = "下肢全長X線 自動計測"
+APP_RELEASE_CHANNEL = "INTERNAL RESEARCH CANDIDATE - NOT FOR CLINICAL USE"
 
 INPUT_SCOPE_LABELS = {
     "single": "片側画像",
@@ -152,10 +153,47 @@ def measurement_export_stem(value: str, *, input_scope: str, side: str) -> str:
     return f"{stem}_{normalized_side}"
 
 
+def model_version_expectation(value: str) -> tuple[str, str]:
+    model_key, separator, version = value.partition("=")
+    model_key = model_key.strip()
+    version = version.strip()
+    if not separator or model_key not in {"bone", "tka", "mixed"} or not version:
+        raise argparse.ArgumentTypeError(
+            "expected model version must be bone=VERSION, tka=VERSION, or mixed=VERSION"
+        )
+    return model_key, version
+
+
+def validate_expected_model_versions(
+    config: AppConfig,
+    infos: dict[str, Any],
+    expectations: list[tuple[str, str]],
+) -> None:
+    expected_versions = dict(expectations)
+    if len(expected_versions) != len(expectations):
+        raise RuntimeError("Duplicate --expected-model-version key.")
+    if expected_versions and set(expected_versions) != set(config.models):
+        raise RuntimeError(
+            "Expected model versions must cover exactly bone, tka, and mixed."
+        )
+    for key, expected_version in expected_versions.items():
+        if config.models[key].version.strip().lower() != "auto":
+            raise RuntimeError(
+                f"Model {key} must use config version 'auto' when an exact "
+                "checkpoint version is required."
+            )
+        actual_version = infos[key].version
+        if actual_version != expected_version:
+            raise RuntimeError(
+                f"Model {key} version {actual_version!r} does not match "
+                f"expected {expected_version!r}."
+            )
+
+
 class KneeMeasurementApp:
     def __init__(self, root: tk.Tk, config_path: Path | None = None) -> None:
         self.root = root
-        self.root.title(f"{APP_TITLE} · v{APP_VERSION}")
+        self.root.title(f"{APP_TITLE} · v{APP_VERSION} · {APP_RELEASE_CHANNEL}")
         self.root.geometry("1500x930")
         self.root.minsize(1080, 720)
         self.root.configure(bg=COLORS["page"])
@@ -310,7 +348,7 @@ class KneeMeasurementApp:
         ).pack(side="left", padx=6)
         tk.Label(
             model_box,
-            text="研究用・要医師確認",
+            text=APP_RELEASE_CHANNEL,
             bg="#451a03",
             fg="#fed7aa",
             padx=12,
@@ -783,7 +821,8 @@ class KneeMeasurementApp:
     def _show_about(self) -> None:
         messagebox.showinfo(
             "このアプリについて",
-            f"{APP_TITLE}  v{APP_VERSION}\n\n"
+            f"{APP_TITLE}  v{APP_VERSION}\n"
+            f"{APP_RELEASE_CHANNEL}\n\n"
             "研究用ソフトウェアです。すべてのランドマークと角度を医師が確認してください。\n"
             "GPUは不要です。CPUで動作し、画像や結果を外部へ送信しません。",
         )
@@ -2250,6 +2289,7 @@ class KneeMeasurementApp:
                 APP_VERSION,
                 manually_modified=bool(self.edited_keys),
                 edited_keys=self.edited_keys,
+                app_release_channel=APP_RELEASE_CHANNEL,
             )
             write_result_bundle(json_path, payload, overlay_path, self.measurement["combined_image"])
         except Exception as exc:
@@ -2276,6 +2316,14 @@ def parse_args() -> argparse.Namespace:
         help="Validate every configured built-in model and exit.",
     )
     parser.add_argument(
+        "--expected-model-version",
+        action="append",
+        default=[],
+        type=model_version_expectation,
+        metavar="KEY=VERSION",
+        help="Require an exact checkpoint version during --validate-models (repeat for all models).",
+    )
+    parser.add_argument(
         "--model-mode",
         choices=("auto", "bone", "tka", "mixed"),
         default="auto",
@@ -2292,6 +2340,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.expected_model_version and not args.validate_models:
+        raise SystemExit("--expected-model-version requires --validate-models")
     if args.validate_model or args.validate_models or args.smoke_test_image is not None:
         try:
             config = load_app_config(args.config)
@@ -2320,6 +2370,11 @@ def main() -> None:
             if args.validate_models:
                 for key in config.models:
                     load_model(key)
+                validate_expected_model_versions(
+                    config,
+                    infos,
+                    args.expected_model_version,
+                )
             elif args.validate_model:
                 load_model(config.default_model_key)
 
@@ -2352,6 +2407,7 @@ def main() -> None:
                         analysis.measurement,
                         APP_VERSION,
                         manually_modified=False,
+                        app_release_channel=APP_RELEASE_CHANNEL,
                     )
                     write_result_bundle(
                         json_path,

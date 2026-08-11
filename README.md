@@ -1,8 +1,12 @@
 # Knee-angle-measument-system
 
-## Final Auto-Measurement App
+## Internal Research Candidate v0.6.0
 
-`knee_measurement_app.py` v0.5.1 is the doctor-facing raw-image workflow:
+> **INTERNAL RESEARCH CANDIDATE - NOT FOR CLINICAL USE.** This candidate has
+> not been formally promoted. The existing v0.5.1 release remains the last
+> formally bundled model set.
+
+`knee_measurement_app.py` v0.6.0 is the candidate raw-image workflow:
 
 1. Open a single-leg or bilateral full-length X-ray (`JPG`, `PNG`, `BMP`, or `TIFF`).
 2. Confirm the patient's anatomical `L` or `R` when laterality cannot be inferred from the filename.
@@ -10,7 +14,7 @@
 4. In bilateral crop mode, separately confirm whether the target leg is on the left or right of the screen, adjust the divider if needed, and click **Confirm ROI and analyze**. The ROI retains an 8%-of-image-width margin across the divider. No inference or export is allowed before this confirmation. **Return to single-leg** cancels bilateral crop mode.
 5. The selected model predicts 8 anatomical points and 2 joint-line endpoint pairs within the confirmed target-leg ROI; results are restored to full source-image coordinates.
 6. The right panel shows the overlay, all 12 coordinates, and mLDFA, MPTA, JLCA, and HKA. A doctor can drag any handle and measurements are recalculated after release.
-7. Export writes a traceable `*_measurement.json` and `*_measurement.png` containing the source hash, model hash/version, edit history, input scope, and—for bilateral images—the confirmed ROI and selection method.
+7. Export writes a traceable `*_measurement.json` and `*_measurement.png` containing the source hash, app version/release channel, model hash/version, edit history, input scope, and—for bilateral images—the confirmed ROI and selection method.
 
 Anatomical `L`/`R` and screen-left/screen-right are intentionally separate. The
 app may suggest a screen position from the usual radiographic display convention,
@@ -42,9 +46,10 @@ python knee_measurement_app.py \
 
 Release quick guides are in `README_DOCTOR_JA.txt` and `README_DOCTOR_EN.txt`.
 
-The current release bundles the three reviewed weights listed in
-`models/README.md`: Bone for non-arthroplasty images, TKA for arthroplasty
-images, and Mixed as the fallback. **自動判定** uses explicit tokens in the
+The v0.6.0 Research Candidate bundles the three tail-QA-curated v4 weights listed
+in `models/README.md`: Bone for non-arthroplasty images, TKA for arthroplasty
+images, and Mixed as the fallback. Their technical OOF/provenance gates do not
+constitute clinical model promotion. **自動判定** uses explicit tokens in the
 image path/name and falls back to Mixed when the type is unknown or conflicting;
 it does not diagnose an implant from image pixels. The user can always select
 Bone, TKA, or Mixed manually, and the manual choice takes priority.
@@ -78,7 +83,10 @@ Run automated checks:
 
 ```bash
 python -m unittest discover -s tests -v
-python knee_measurement_app.py --validate-models
+python knee_measurement_app.py --validate-models \
+  --expected-model-version bone=20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-bone-final-v1 \
+  --expected-model-version tka=20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-tka-final-v1 \
+  --expected-model-version mixed=20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-bone-tka-mixed-final-v1
 ```
 
 Build the standalone inference app on the target operating system:
@@ -102,7 +110,7 @@ measurement, and export behavior in one implementation while avoiding Japanese
 UI/code-page problems on Windows. The Windows ZIP contains
 `README_DOCTOR_EN.txt`; the macOS ZIP keeps `README_DOCTOR_JA.txt`.
 
-Builds require Python 3.10–3.12. The current release target is Apple Silicon
+Builds require Python 3.10–3.12. The current candidate target is Apple Silicon
 `arm64` on macOS 12.1 or newer; it is not a universal binary. The release config
 forces CPU inference. The doctor does not need Python, a GPU, package installs,
 or network access. Each build clears and sanitizes its virtual environment,

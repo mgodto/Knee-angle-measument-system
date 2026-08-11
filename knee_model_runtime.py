@@ -1110,6 +1110,7 @@ def export_record(
     app_version: str,
     manually_modified: bool,
     edited_keys: set[str] | None = None,
+    app_release_channel: str | None = None,
 ) -> dict[str, Any]:
     ensure_finite_measurement(measurement)
     recomputed = measurement_from_coordinates(
@@ -1171,9 +1172,13 @@ def export_record(
             "confirmed": analysis.roi_confirmed,
         }
 
+    app_payload = {"name": "Knee X-ray Auto Measurement", "version": app_version}
+    if app_release_channel:
+        app_payload["release_channel"] = app_release_channel
+
     return {
         "schema_version": 1,
-        "app": {"name": "Knee X-ray Auto Measurement", "version": app_version},
+        "app": app_payload,
         "source": {
             "filename": analysis.raw_path.name,
             "sha256": analysis.source_sha256,

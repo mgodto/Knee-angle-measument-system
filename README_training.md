@@ -143,6 +143,99 @@ It performs patient-group 5-fold OOF training/evaluation before training each
 delivery candidate on all clean rows. Do not replace bundled release weights
 until the new OOF summaries and extreme-error cases have been reviewed.
 
+For the expanded 2026-08-11 dataset, the immutable canonical merge contains
+880 rows. The reviewed crop-contract finalizer keeps every canonical record but
+materializes only approved training representations under:
+
+- `outputs/retraining_single_leg_v3_20260811/manifests_curated/bone_confirmed.csv`
+- `outputs/retraining_single_leg_v3_20260811/manifests_curated/tka.csv`
+- `outputs/retraining_single_leg_v3_20260811/manifests_curated/bone_tka.csv`
+
+The curated manifests contain 425 Bone, 301 TKA, and 726 exact-union Mixed
+rows. Forty-five legacy-unknown rows remain available in `all_clean.csv` and
+`legacy_unknown.csv`, but never enter a delivery model. Held or uncertain crop
+records remain in the canonical 880-row dataset and its private QA ledger; they
+are not deleted.
+
+Run its manifest-only gate before starting the long job:
+
+```bash
+bash run_retraining_single_leg_v3_20260811.sh --preflight-only
+```
+
+The v3 gate requires valid patient-group, side, crop, annotation, and raw-file
+fields; rejects duplicate sample IDs or canonical training content; verifies
+that Bone and TKA are disjoint and Mixed is their exact union; and requires the
+Bone/TKA cohorts to have expanded beyond 380/287 rows. It also verifies the
+private crop-evidence SHA, immediate-source SHA lineage, curated file SHA,
+12-coordinate bounds, reviewed status, and padding-aware geometry. Reviewed
+recrops preserve the strict target-leg pixel scale by centering the strip on a
+0.35-0.60 width/height canvas without stretching it; the strict crop width plus
+left/right padding must equal the output width, and `crop_rescaled` must be
+false. The full command keeps the same resumable 5-fold OOF and train-all
+contract as v2:
+
+Any processed crop with `crop_confirmed=false` is structurally valid but is not
+automatically approved as a single-leg model input. This includes both
+`paired_horizontal_crop` and `annotation_bbox_horizontal_crop`. Review every
+such image for a complete target limb, a competing contralateral chain or foot,
+and target-side ambiguity before training. Keep failed crops and their
+annotations in the canonical dataset, record the private QA decision, and
+exclude only the failed processed records from Bone, TKA, and Mixed retraining
+manifests until they are safely recropped and reviewed. Do not remove an entire
+patient group merely because one record is held; the remaining records must
+retain their patient-group `case_id`. Re-run all folds after changing the
+accepted record set, because a cohort whose set of patient groups changes is a
+new split and is not a paired comparison with an earlier run.
+
+```bash
+bash run_retraining_single_leg_v3_20260811.sh
+```
+
+### Tail-QA-curated v4 retraining
+
+The v3 OOF tail review identified 12 unique records with dataset or crop
+errors. Record-level adjudication excluded 11 of them and replaced one with a
+validated, release-safe recrop. The immutable 880-row canonical dataset and the
+v3 artifacts remain unchanged. The final tail-QA materialization is stored
+separately under `outputs/retraining_single_leg_v4_tailqa_20260811` and contains:
+
+- 419 Bone rows in `manifests_curated/bone_confirmed.csv`
+- 296 TKA rows in `manifests_curated/tka.csv`
+- 715 exact-union Mixed rows in `manifests_curated/bone_tka.csv`
+- 45 byte-identical legacy-unknown rows in `manifests_curated/legacy_unknown.csv`
+- 760 total rows in `manifests_curated/all_clean.csv`
+
+The PHI-free public materialization summary is
+`outputs/retraining_single_leg_v4_tailqa_20260811/qa/tailqa_materialization_summary.json`
+with SHA-256
+`9e9a1de4fe9804ba8bbeed975373d0df5cd94ffd9362011bcfa4b3cd671e0e94`.
+It records the exact manifest hashes, 11 exclusions, one recrop replacement, and
+the disjoint/union, duplicate-content, row-order, and frozen-v3 invariants.
+
+Reuse the hardened v3 runner only with explicit v4 output, manifest, and model
+namespace overrides. Run the preflight first:
+
+```bash
+KNEE_RETRAINING_OUTPUT_ROOT=outputs/retraining_single_leg_v4_tailqa_20260811 \
+KNEE_RETRAINING_MANIFEST_ROOT=outputs/retraining_single_leg_v4_tailqa_20260811/manifests_curated \
+KNEE_RETRAINING_MODEL_VERSION_NAMESPACE=20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98 \
+bash run_retraining_single_leg_v3_20260811.sh --preflight-only
+```
+
+Then run the complete patient-group 5-fold OOF and train-all recipe with the
+same three overrides and without `--preflight-only`:
+
+```bash
+KNEE_RETRAINING_OUTPUT_ROOT=outputs/retraining_single_leg_v4_tailqa_20260811 \
+KNEE_RETRAINING_MANIFEST_ROOT=outputs/retraining_single_leg_v4_tailqa_20260811/manifests_curated \
+KNEE_RETRAINING_MODEL_VERSION_NAMESPACE=20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98 \
+bash run_retraining_single_leg_v3_20260811.sh
+```
+
+The v2 runner remains limited to its fixed 2026-08-03 paired-comparison sample
+set and must not be reused for an expanded dataset.
+
 For the integrated non-TKA knee model, use the `未加入人工關節` folder.
 It contains confirmed new `bone` annotations plus the legacy dataset:
 

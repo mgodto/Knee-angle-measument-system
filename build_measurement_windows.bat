@@ -8,12 +8,15 @@ set PYTHONUTF8=1
 set PYTHONIOENCODING=utf-8
 chcp 65001 >nul
 
-set "APP_VERSION=0.5.1"
-set "RELEASE_DATE=20260803"
-set "EXPECTED_BONE_SHA=24481410c3fd2ce2222eed422f4d519f72da95ba232570ee31a4827d45201cfd"
-set "EXPECTED_TKA_SHA=87027887ec091068a9b91b01a881092400fed58eb8d3eeaaeddb10e8be398e5f"
-set "EXPECTED_MIXED_SHA=f0cfa67f34691f3d81da0e10f0d6ff753dcf71f5aafd278ddb6bf146efc6ba45"
-set "RELEASE_ROOT=KneeXrayMeasurement-Windows-x64-v%APP_VERSION%-%RELEASE_DATE%"
+set "APP_VERSION=0.6.0"
+set "RELEASE_DATE=20260811"
+set "EXPECTED_BONE_VERSION=20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-bone-final-v1"
+set "EXPECTED_TKA_VERSION=20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-tka-final-v1"
+set "EXPECTED_MIXED_VERSION=20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-bone-tka-mixed-final-v1"
+set "EXPECTED_BONE_SHA=36e8fee67c7c6bad8071a5a7ff8dbc713d76e28482c2a26798abd15ba3334862"
+set "EXPECTED_TKA_SHA=23a416f8c376156b3fa323298d3e45ae00060d619e0215754a46f2a2254a1669"
+set "EXPECTED_MIXED_SHA=5e2f5087a433aa6bc9c58d792e132d88f1098952df446512375818a779d1254e"
+set "RELEASE_ROOT=KneeXrayMeasurement-ResearchCandidate-Windows-x64-v%APP_VERSION%-%RELEASE_DATE%"
 set "RELEASE_ZIP=dist\%RELEASE_ROOT%.zip"
 set "RELEASE_STAGE_ROOT=release-stage-measurement"
 set "RELEASE_STAGE=%RELEASE_STAGE_ROOT%\%RELEASE_ROOT%"
@@ -62,9 +65,9 @@ python generate_windows_english_entrypoint.py --source knee_measurement_app.py -
 if errorlevel 1 exit /b 1
 python -m py_compile "%WINDOWS_ENTRYPOINT%"
 if errorlevel 1 exit /b 1
-python -c "from knee_measurement_app_windows import APP_VERSION, WINDOWS_ENGLISH_BUILD; assert APP_VERSION == '0.5.1', APP_VERSION; assert WINDOWS_ENGLISH_BUILD"
+python -c "from knee_measurement_app_windows import APP_RELEASE_CHANNEL, APP_VERSION, WINDOWS_ENGLISH_BUILD; assert APP_VERSION == '0.6.0', APP_VERSION; assert APP_RELEASE_CHANNEL == 'INTERNAL RESEARCH CANDIDATE - NOT FOR CLINICAL USE', APP_RELEASE_CHANNEL; assert WINDOWS_ENGLISH_BUILD"
 if errorlevel 1 exit /b 1
-python "%WINDOWS_ENTRYPOINT%" --validate-models
+python "%WINDOWS_ENTRYPOINT%" --validate-models --expected-model-version bone=%EXPECTED_BONE_VERSION% --expected-model-version tka=%EXPECTED_TKA_VERSION% --expected-model-version mixed=%EXPECTED_MIXED_VERSION%
 if errorlevel 1 exit /b 1
 python create_release_smoke_fixture.py "%SMOKE_IMAGE%"
 if errorlevel 1 exit /b 1
@@ -81,7 +84,7 @@ if exist "%RELEASE_STAGE_ROOT%" rmdir /s /q "%RELEASE_STAGE_ROOT%"
 
 pyinstaller --noconfirm --clean knee_measurement_app.spec
 if errorlevel 1 exit /b 1
-dist\KneeXrayMeasurement\KneeXrayMeasurement.exe --validate-models
+dist\KneeXrayMeasurement\KneeXrayMeasurement.exe --validate-models --expected-model-version bone=%EXPECTED_BONE_VERSION% --expected-model-version tka=%EXPECTED_TKA_VERSION% --expected-model-version mixed=%EXPECTED_MIXED_VERSION%
 if errorlevel 1 exit /b 1
 
 mkdir "%RELEASE_STAGE%"
@@ -91,7 +94,7 @@ if errorlevel 1 exit /b 1
 copy /Y README_DOCTOR_EN.txt "%RELEASE_STAGE%\README_DOCTOR_EN.txt" >nul
 if errorlevel 1 exit /b 1
 
-"%RELEASE_STAGE%\KneeXrayMeasurement.exe" --validate-models
+"%RELEASE_STAGE%\KneeXrayMeasurement.exe" --validate-models --expected-model-version bone=%EXPECTED_BONE_VERSION% --expected-model-version tka=%EXPECTED_TKA_VERSION% --expected-model-version mixed=%EXPECTED_MIXED_VERSION%
 if errorlevel 1 exit /b 1
 "%RELEASE_STAGE%\KneeXrayMeasurement.exe" --smoke-test-image "%SMOKE_IMAGE%" --side R --model-mode bone
 if errorlevel 1 exit /b 1

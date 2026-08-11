@@ -1,18 +1,21 @@
-下肢全長X線 自動計測 v0.5.1（研究用）
-==================================================
+INTERNAL RESEARCH CANDIDATE - NOT FOR CLINICAL USE
+正式昇格前の内部研究候補です。臨床診断・治療には使用しないでください。
+
+下肢全長X線 自動計測 v0.6.0
+====================================
 
 内蔵AIモデル（3種類）
   Bone（人工関節なし）
-    バージョン: 20260720-bone-final-v1
-    SHA-256: 24481410c3fd2ce2222eed422f4d519f72da95ba232570ee31a4827d45201cfd
+    バージョン: 20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-bone-final-v1
+    SHA-256: 36e8fee67c7c6bad8071a5a7ff8dbc713d76e28482c2a26798abd15ba3334862
 
   TKA（人工関節あり）
-    バージョン: 20260720-tka-final-v1
-    SHA-256: 87027887ec091068a9b91b01a881092400fed58eb8d3eeaaeddb10e8be398e5f
+    バージョン: 20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-tka-final-v1
+    SHA-256: 23a416f8c376156b3fa323298d3e45ae00060d619e0215754a46f2a2254a1669
 
   Mixed（Bone/TKA混合・判定不明時）
-    バージョン: 20260720-bone-tka-mixed-final-v1
-    SHA-256: f0cfa67f34691f3d81da0e10f0d6ff753dcf71f5aafd278ddb6bf146efc6ba45
+    バージョン: 20260811-single-leg-v4-curated-tailqa-9e9a1de4fe98-bone-tka-mixed-final-v1
+    SHA-256: 5e2f5087a433aa6bc9c58d792e132d88f1098952df446512375818a779d1254e
 
 モデルの選択
   「自動判定」では、画像のファイル名と保存フォルダー名に含まれる
@@ -53,7 +56,8 @@
 結果の保存と追跡情報
   両側画像のAI入力だけをROIへ切り出し、表示・手動修正・保存する座標は元画像
   全体の座標へ戻されます。書き出したmeasurement JSONには元画像のファイル名、
-  寸法、SHA-256、入力範囲（片側/両側）、モデル情報、手動修正履歴を保存します。
+  寸法、SHA-256、入力範囲（片側/両側）、アプリ版／release channel、モデル情報、
+  手動修正履歴を保存します。
   両側画像ではさらに、確認済みROIのx0/y0/x1/y1、幅・高さ、座標系、選択方法、
   confirmed=trueをanalysis.inference_roiへ保存します。この情報により、学習用へ
   取り込む場合も同じ対象脚だけを安全に切り出せます。
@@ -82,6 +86,10 @@
   モデル選択を行ってください。
 
 注意
+  - このパッケージは内部研究用のResearch Candidateであり、正式な臨床版では
+    ありません。診断・治療には使用しないでください。
+  - 同一データセット内5-fold OOFでも個別に大きな誤差が残り得ます。GUIの
+    自動警告ですべてを検出できないため、全点・関節線・角度を元画像と照合してください。
   - JPG、PNG、BMP、TIFFの片側または両側下肢全長画像を対象とします。
   - DICOMには対応していません。
   - 両脚を含む画像では、必ず「両側画像を切り出す」から対象脚ROIを確認してください。
